@@ -70,7 +70,8 @@ fn direction(x: i32, y: i32, resolution: Resolution, fov: f32) -> Vector3<f32> {
     let screen = Vector2::new(x as f32, y as f32);
     let center = 0.5 * Vector2::new(width as f32, height as f32);
     // TODO use fov instead of 0.1
-    ((screen - center) * 0.1).push(1.0).normalize()
+    
+    ((screen - center) / center.min() * (0.5 * fov).tan()).push(1.0).normalize()
 }
 
 fn render(target: &mut Buffer, fov: f32, position: Vector3<f32>, metaballs: &Metaballs) {
@@ -98,9 +99,9 @@ fn main() -> io::Result<()>{
     let resolution = parse_resolution(&env::var("RESOLUTION").unwrap_or("506x253".to_string()));
     let mut buffer = Buffer::new(resolution);
     let mut scene = Metaballs::new();
-    let a = Metaball::new(Vector3::zeros(), 2.5);
+    let a = Metaball::new(Vector3::zeros(), 1.0);
     scene.metaballs.push(a);
-    render(&mut buffer, 90.0, Vector3::new(0.0, 0.0, -3.0), &scene);
+    render(&mut buffer, 60.0_f32.to_radians(), Vector3::new(0.0, 0.0, -3.0), &scene);
     std::io::stdout().write(&buffer.pixels)?;
     Ok(())
 }
