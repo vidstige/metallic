@@ -78,7 +78,7 @@ impl Metaball {
 }
 
 fn gray(g: f32) -> Color {
-    let g = (255.0 * g) as u8;
+    let g = (255.0 * g.clamp(0.0, 1.0)) as u8;
     [g, g, g, 0xff]
 }
 
