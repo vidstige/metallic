@@ -72,7 +72,7 @@ impl Metaball {
     fn field_value(&self, p: &Vector3<f32>) -> f32 {
         let d2 = (self.sphere.center - p).magnitude_squared();
         let r2 = self.sphere.radius_squared();
-        let t = 1.0 - (d2 / r2);
+        let t = 1.0 - (d2 / r2).sqrt();
         if t < 0.0 || t > 1.0 { 0.0 } else { self.strength * g(t) }
     }
 }
@@ -146,7 +146,7 @@ fn trace(metaballs: &Vec<Metaball>, ray: &Ray<f32>) -> Option<f32> {
             active.retain_mut(|mb| mb != &metaball);
         }
         // trace between t0 and t1
-        let n = 20;
+        let n = 25;
         for i in 0..n {
             let t = lerp(t0, t1, i as f32 / n as f32);
             let q = field_value(&active, &ray.at(t));
