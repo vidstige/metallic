@@ -24,7 +24,7 @@ struct Buffer {
 
 impl Buffer {
     fn new(resolution: Resolution) -> Buffer {
-        Buffer { resolution: resolution, pixels: vec![0; area(resolution) * 4]}
+        Buffer { resolution, pixels: vec![0; area(resolution) * 4]}
     }
 }
 
@@ -32,6 +32,13 @@ fn pixel(target: &mut Buffer, x: i32, y: i32, color: &Color) {
     let (stride, _) = target.resolution;
     let index = ((x + y * stride) * 4) as usize;
     target.pixels[index..index + color.len()].copy_from_slice(color);
+}
+
+// the special tween function
+// g(0) = 0 and g(1) = 1 as well as
+// g'(0) = 0 and g'(1)
+fn g(t: f32) -> f32 {
+    t * t * t * (t * (t * 6.0 - 15.0) + 10.0)
 }
 
 #[derive(PartialEq, PartialOrd)]
@@ -43,6 +50,9 @@ struct Sphere<T: Scalar> {
 impl Sphere<f32> {
     fn new(center: Vector3<f32>, radius: f32) -> Sphere<f32> {
         Sphere {center, radius}
+    }
+    fn radius_squared(&self) -> f32 {
+        self.radius * self.radius
     }
 }
 
@@ -60,7 +70,10 @@ impl Metaball {
         }
     }
     fn field_value(&self, p: &Vector3<f32>) -> f32 {
-        self.strength / (self.sphere.center - p).magnitude()
+        let d2 = (self.sphere.center - p).magnitude_squared();
+        let r2 = self.sphere.radius_squared();
+        let t = 1.0 - (d2 / r2);
+        if t < 0.0 || t > 1.0 { 0.0 } else { self.strength * g(t) }
     }
 }
 
@@ -68,7 +81,6 @@ fn gray(g: f32) -> Color {
     let g = (255.0 * g) as u8;
     [g, g, g, 0xff]
 }
-
 
 fn direction(x: i32, y: i32, resolution: Resolution, fov: f32) -> Vector3<f32> {
     let (width, height) = resolution;
@@ -121,11 +133,10 @@ fn trace(metaballs: &Vec<Metaball>, ray: &Ray<f32>) -> Option<f32> {
     }
 
     // sort intersections by ray parameter t
-    intersections.sort_by(|(a, _, _), (b, _, _)| a.partial_cmp(b).unwrap());
+    intersections.sort_unstable_by(|(a, _, _), (b, _, _)| a.partial_cmp(b).unwrap());
 
     // keep track of "active" spheres
     let mut active = Vec::new();
-    let mut hi = 0;
     for slice in intersections.windows(2) {
         let (t0, metaball, enter) = slice[0];
         let (t1, _, _) = slice[1];
@@ -135,17 +146,17 @@ fn trace(metaballs: &Vec<Metaball>, ray: &Ray<f32>) -> Option<f32> {
             active.retain_mut(|mb| mb != &metaball);
         }
         // trace between t0 and t1
-        /*let n = 10;
+        let n = 20;
         for i in 0..n {
             let t = lerp(t0, t1, i as f32 / n as f32);
             let q = field_value(&active, &ray.at(t));
-            if q < 1.0 {
-                return Some(q);
+            if q > 0.5 {
+                return Some(t - 2.0);
             }
-        }*/
-        hi = active.len().max(hi);
+        }
+        
     }
-    Some(hi as f32 / metaballs.len() as f32)
+    None
 }
 
 fn render(target: &mut Buffer, fov: f32, position: Vector3<f32>, metaballs: &Vec<Metaball>) {
