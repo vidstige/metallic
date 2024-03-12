@@ -146,8 +146,8 @@ fn trace(metaballs: &Vec<Metaball>, ray: &Ray<f32>) -> Option<Color> {
             active.retain_mut(|mb| mb != &metaball);
         }
         // trace between t0 and t1
-        let n = 10;
-        let level = 0.5;
+        let n = 25;
+        let level = 0.3;
         for i in 0..n {
             let ti = lerp(t0, t1, i as f32 / n as f32);
             let qi = field_value(&active, &ray.at(ti));
@@ -157,8 +157,9 @@ fn trace(metaballs: &Vec<Metaball>, ray: &Ray<f32>) -> Option<Color> {
                 // TODO: avoid recomputing qj
                 let qj = field_value(&active, &ray.at(tj));
                 // lerp ray parameter t
-                let t = (level - qj) / (qi - qj);
-                return Some(gray(t - level));
+                let t = lerp(tj, ti, (level - qj) / (qi - qj));
+                let g = 1.0 - (t - 2.45) / 0.4;
+                return Some(gray(g));
             }
         }
     }
@@ -178,7 +179,7 @@ fn render(target: &mut Buffer, fov: f32, position: Vector3<f32>, metaballs: &Vec
                 pixel(target, x, y, &color);
             } else {
                 // background
-                pixel(target, x, y, &gray(0.1));
+                pixel(target, x, y, &gray(0.0));
             }
         }
     }
