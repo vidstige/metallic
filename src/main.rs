@@ -44,9 +44,6 @@ impl Sphere<f32> {
     fn new(center: Vector3<f32>, radius: f32) -> Sphere<f32> {
         Sphere {center, radius}
     }
-    fn sdf(&self, p: &Vector3<f32>) -> f32 {
-        (self.center - p).magnitude() - self.radius
-    }
 }
 
 #[derive(PartialEq, PartialOrd)]
@@ -62,18 +59,9 @@ impl Metaball {
             strength,
         }
     }
-    // field value
-    fn q(&self, p: Vector3<f32>) -> f32 {
-        0.0
+    fn field_value(&self, p: &Vector3<f32>) -> f32 {
+        self.strength / (self.sphere.center - p).magnitude()
     }
-}
-
-struct Metaballs {
-    metaballs: Vec<Metaball>,
-}
-
-impl Metaballs {
-    fn new() -> Metaballs { Metaballs { metaballs: Vec::new() }}
 }
 
 fn gray(g: f32) -> Color {
@@ -114,14 +102,18 @@ fn intersection(ray: &Ray<f32>, sphere: &Sphere<f32>) -> Option<(f32, f32)> {
 }
 
 fn lerp(a: f32, b: f32, t: f32) -> f32 {
-    (1.0 - t) * a + t * a
+    (1.0 - t) * a + t * b
 }
 
-fn trace(metaballs: &Metaballs, ray: &Ray<f32>) -> Option<f32> {
+fn field_value(metaballs: &Vec<&Metaball>, p: &Vector3<f32>) -> f32 {
+    metaballs.iter().map(|mb| mb.field_value(p)).sum()
+}
+
+fn trace(metaballs: &Vec<Metaball>, ray: &Ray<f32>) -> Option<f32> {
     // find all intersections with sphere of influence
     // also keep track of the ray enters (true) or leavs the sphere
     let mut intersections: Vec<_> = Vec::new();
-    for metaball in &metaballs.metaballs {
+    for metaball in metaballs {
         if let Some((t0, t1)) = intersection(&ray, &metaball.sphere) {
             intersections.push((t0, metaball, true));
             intersections.push((t1, metaball, false));
@@ -133,6 +125,7 @@ fn trace(metaballs: &Metaballs, ray: &Ray<f32>) -> Option<f32> {
 
     // keep track of "active" spheres
     let mut active = Vec::new();
+    let mut hi = 0;
     for slice in intersections.windows(2) {
         let (t0, metaball, enter) = slice[0];
         let (t1, _, _) = slice[1];
@@ -142,16 +135,20 @@ fn trace(metaballs: &Metaballs, ray: &Ray<f32>) -> Option<f32> {
             active.retain_mut(|mb| mb != &metaball);
         }
         // trace between t0 and t1
-        let n = 10;
+        /*let n = 10;
         for i in 0..n {
             let t = lerp(t0, t1, i as f32 / n as f32);
-            return Some(1.0);
-        }
+            let q = field_value(&active, &ray.at(t));
+            if q < 1.0 {
+                return Some(q);
+            }
+        }*/
+        hi = active.len().max(hi);
     }
-    None
+    Some(hi as f32 / metaballs.len() as f32)
 }
 
-fn render(target: &mut Buffer, fov: f32, position: Vector3<f32>, metaballs: &Metaballs) {
+fn render(target: &mut Buffer, fov: f32, position: Vector3<f32>, metaballs: &Vec<Metaball>) {
     let (width, height) = target.resolution;
     for y in 0..height {
         for x in 0..width {
@@ -161,7 +158,7 @@ fn render(target: &mut Buffer, fov: f32, position: Vector3<f32>, metaballs: &Met
             };
 
             if let Some(t) = trace(metaballs, &ray) {
-                pixel(target, x, y, &gray(1.0));
+                pixel(target, x, y, &gray(t));
             } else {
                 pixel(target, x, y, &gray(0.0));
             }
@@ -172,10 +169,10 @@ fn render(target: &mut Buffer, fov: f32, position: Vector3<f32>, metaballs: &Met
 fn main() -> io::Result<()>{
     let resolution = parse_resolution(&env::var("RESOLUTION").unwrap_or("506x253".to_string()));
     let mut buffer = Buffer::new(resolution);
-    let mut scene = Metaballs::new();
-    scene.metaballs.push(Metaball::new(Vector3::new(-0.6, 0.0, 0.0), 1.0, 1.0));
-    scene.metaballs.push(Metaball::new(Vector3::new(0.6, 0.0, 0.0), 1.0, 1.0));
-    render(&mut buffer, 60.0_f32.to_radians(), Vector3::new(0.0, 0.0, -3.0), &scene);
+    let mut metaballs = Vec::new();
+    metaballs.push(Metaball::new(Vector3::new(-0.6, 0.0, 0.0), 1.0, 1.0));
+    metaballs.push(Metaball::new(Vector3::new(0.6, 0.0, 0.0), 1.0, 1.0));
+    render(&mut buffer, 60.0_f32.to_radians(), Vector3::new(0.0, 0.0, -3.0), &metaballs);
     std::io::stdout().write(&buffer.pixels)?;
     Ok(())
 }
