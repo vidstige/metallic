@@ -183,7 +183,7 @@ fn main() -> io::Result<()>{
     let mut metaballs = Vec::new();
     metaballs.push(Metaball::new(Vector3::new(-0.6, 0.0, 0.0), 1.0, 1.0));
     metaballs.push(Metaball::new(Vector3::new(0.6, 0.0, 0.0), 1.0, 1.0));
-    render(&mut buffer, 60.0_f32.to_radians(), Vector3::new(0.0, 0.0, -3.0), &metaballs);
+    render(&mut buffer, 30.0_f32.to_radians(), Vector3::new(0.0, 0.0, -3.0), &metaballs);
     std::io::stdout().write(&buffer.pixels)?;
     Ok(())
 }
