@@ -73,7 +73,12 @@ impl Metaball {
         let d2 = (self.sphere.center - p).magnitude_squared();
         let r2 = self.sphere.radius_squared();
         let t = 1.0 - (d2 / r2).sqrt();
+        // TODO: Is this range check needed?
         if t < 0.0 || t > 1.0 { 0.0 } else { self.strength * g(t) }
+    }
+    fn normal(&self, p: &Vector3<f32>) -> Vector3<f32> {
+        // The normal is simply the normalized vector from center to the point o
+        (p - self.sphere.center).normalize()
     }
 }
 
@@ -121,8 +126,12 @@ fn field_value(metaballs: &[&Metaball], p: &Vector3<f32>) -> f32 {
     metaballs.iter().map(|mb| mb.field_value(p)).sum()
 }
 
-fn normal_at(active: &[&Metaball], p: Vector3<f32>) -> Vector3<f32> {
-    Vector3::zeros()
+fn normal_at(metaballs: &[&Metaball], p: &Vector3<f32>) -> Vector3<f32> {
+    let qs: Vec<_> = metaballs.iter().map(|mb| mb.field_value(p)).collect();
+    let q: f32 = qs.iter().sum();
+    
+    let normal: Vector3<f32> = metaballs.iter().zip(qs).map(|(mb, qi)| qi * mb.normal(p)).sum();
+    normal / q
 }
 
 fn trace(metaballs: &Vec<Metaball>, ray: &Ray<f32>) -> Option<Color> {
@@ -150,7 +159,7 @@ fn trace(metaballs: &Vec<Metaball>, ray: &Ray<f32>) -> Option<Color> {
             active.retain_mut(|mb| mb != &metaball);
         }
         // trace between t0 and t1
-        let n = 25;
+        let n = 10;
         let level = 0.3;
         for i in 0..n {
             let ti = lerp(t0, t1, i as f32 / n as f32);
@@ -163,8 +172,10 @@ fn trace(metaballs: &Vec<Metaball>, ray: &Ray<f32>) -> Option<Color> {
                 // lerp ray parameter t
                 let t = lerp(tj, ti, (level - qj) / (qi - qj));
                 // compute normal
-                let normal = normal_at(&active, ray.at(t));
-                let g = 1.0 - (t - 2.45) / 0.4;
+                let normal = normal_at(&active, &ray.at(t));
+                let light = Vector3::new(0.0, -1.0, -1.0).normalize();
+                let g = normal.dot(&light);
+                //let g = 1.0 - (t - 2.45) / 0.4
                 return Some(gray(g));
             }
         }
