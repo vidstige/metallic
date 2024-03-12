@@ -1,6 +1,8 @@
 use std::{env, f32::consts::TAU, io::{self, Write}};
 extern crate nalgebra as na;
 use na::{Scalar, Vector2, Vector3};
+mod gradient;
+use gradient::Gradient;
 
 type Resolution = (i32, i32);
 type Color = [u8; 4];
@@ -54,6 +56,14 @@ impl Sphere<f32> {
     fn radius_squared(&self) -> f32 {
         self.radius * self.radius
     }
+}
+
+// transforms cartesian cordinates x,yz to spherical cordinates r, theta, phi
+fn spherical(cartesian: Vector3<f32>) -> Vector3<f32> {
+    let r = cartesian.magnitude();
+    let theta = (cartesian.y / r).acos();
+    let phi = cartesian.z.signum() * (cartesian.x / cartesian.xz().magnitude()).acos();
+    Vector3::new(r, theta, phi)
 }
 
 #[derive(PartialEq, PartialOrd)]
@@ -137,25 +147,18 @@ fn normal_at(metaballs: &[&Metaball], p: &Vector3<f32>) -> Vector3<f32> {
     normal / q
 }
 
-fn clamped_u8(f: f32) -> u8 {
-    (f.clamp(0.0, 1.0) * 255.0) as u8
+trait EnvironmentMap {
+    fn color(&self, direction: Vector3<f32>) -> Color;
 }
 
-fn color(r: f32, g: f32, b: f32) -> Color {
-    [clamped_u8(b), clamped_u8(g), clamped_u8(r), 0xff]
+impl EnvironmentMap for Gradient {
+    fn color(&self, direction: Vector3<f32>) -> Color {
+        let theta = spherical(direction).y;
+        self.sample(theta / TAU)
+    }
 }
 
-fn environment_map(direction: Vector3<f32>) -> Color {
-    // convert to spherical cordinates
-    let theta = direction.y.acos();
-    //let phi = direction.z.signum() * (direction.x / direction.xz().magnitude()).acos();
-    let r = theta / TAU;
-    let g = 0.0;
-    let b = 0.0;
-    color(r, g, b)
-}
-
-fn trace(metaballs: &Vec<Metaball>, ray: &Ray<f32>) -> Option<Color> {
+fn trace(metaballs: &Vec<Metaball>, environment: &dyn EnvironmentMap, ray: &Ray<f32>) -> Option<Color> {
     // find all intersections with sphere of influence
     // also keep track of the ray enters (true) or leavs the sphere
     let mut intersections: Vec<_> = Vec::new();
@@ -197,14 +200,14 @@ fn trace(metaballs: &Vec<Metaball>, ray: &Ray<f32>) -> Option<Color> {
                 //let light = Vector3::new(0.0, -1.0, -1.0).normalize();
                 //let g = normal.dot(&light);
                 let reflected = reflect(&ray.direction, &normal);
-                return Some(environment_map(reflected));
+                return Some(environment.color(reflected));
             }
         }
     }
     None
 }
 
-fn render(target: &mut Buffer, fov: f32, position: Vector3<f32>, metaballs: &Vec<Metaball>) {
+fn render(target: &mut Buffer, fov: f32, position: Vector3<f32>, metaballs: &Vec<Metaball>, environment: &dyn EnvironmentMap) {
     let (width, height) = target.resolution;
     for y in 0..height {
         for x in 0..width {
@@ -213,7 +216,7 @@ fn render(target: &mut Buffer, fov: f32, position: Vector3<f32>, metaballs: &Vec
                 direction: direction(x, y, target.resolution, fov),
             };
 
-            if let Some(color) = trace(metaballs, &ray) {
+            if let Some(color) = trace(metaballs, environment, &ray) {
                 pixel(target, x, y, &color);
             } else {
                 // background
@@ -229,7 +232,10 @@ fn main() -> io::Result<()>{
     let mut metaballs = Vec::new();
     metaballs.push(Metaball::new(Vector3::new(-0.6, 0.0, 0.0), 1.0, 1.0));
     metaballs.push(Metaball::new(Vector3::new(0.6, 0.0, 0.0), 1.0, 1.0));
-    render(&mut buffer, 30.0_f32.to_radians(), Vector3::new(0.0, 0.0, -3.0), &metaballs);
+    let mut environment = Gradient::new();
+    environment.add_stop(0xff000000);
+    environment.add_stop(0xffdddddd);
+    render(&mut buffer, 30.0_f32.to_radians(), Vector3::new(0.0, 0.0, -3.0), &metaballs, &environment);
     std::io::stdout().write_all(&buffer.pixels)?;
     Ok(())
 }
