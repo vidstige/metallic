@@ -92,11 +92,6 @@ impl Metaball {
     }
 }
 
-fn gray(g: f32) -> Color {
-    let g = (255.0 * g.clamp(0.0, 1.0)) as u8;
-    [g, g, g, 0xff]
-}
-
 fn direction(x: i32, y: i32, resolution: Resolution, fov: f32) -> Vector3<f32> {
     let (width, height) = resolution;
     let screen = Vector2::new(x as f32, y as f32);
@@ -220,10 +215,32 @@ fn render(target: &mut Buffer, fov: f32, position: Vector3<f32>, metaballs: &Vec
                 pixel(target, x, y, &color);
             } else {
                 // background
-                pixel(target, x, y, &gray(0.0));
+                pixel(target, x, y, &[0xff, 0, 0, 0]);
             }
         }
     }
+}
+
+fn gray() -> Gradient {
+    let mut gradient = Gradient::new();
+    gradient.add_stop(0xff000000);
+    gradient.add_stop(0xffdddddd);
+    gradient
+}
+
+fn metallic() -> Gradient {
+    let mut gradient = Gradient::new();
+    gradient.add_stop(0xff926c5f);
+    gradient.add_stop(0xffa5887b);
+    gradient.add_stop(0xffe5d4c9);
+    gradient.add_stop(0xffdfcec3);
+    gradient.add_stop(0xffcdb6a6);
+    gradient.add_stop(0xffc1a795);
+    gradient.add_stop(0xffc1a898);
+    gradient.add_stop(0xffc5a895);
+    gradient.add_stop(0xffb89380);
+    gradient.add_stop(0xffa07260);
+    gradient
 }
 
 fn main() -> io::Result<()>{
@@ -232,9 +249,7 @@ fn main() -> io::Result<()>{
     let mut metaballs = Vec::new();
     metaballs.push(Metaball::new(Vector3::new(-0.6, 0.0, 0.0), 1.0, 1.0));
     metaballs.push(Metaball::new(Vector3::new(0.6, 0.0, 0.0), 1.0, 1.0));
-    let mut environment = Gradient::new();
-    environment.add_stop(0xff000000);
-    environment.add_stop(0xffdddddd);
+    let environment = metallic();
     render(&mut buffer, 30.0_f32.to_radians(), Vector3::new(0.0, 0.0, -3.0), &metaballs, &environment);
     std::io::stdout().write_all(&buffer.pixels)?;
     Ok(())
