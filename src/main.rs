@@ -117,8 +117,12 @@ fn lerp(a: f32, b: f32, t: f32) -> f32 {
     (1.0 - t) * a + t * b
 }
 
-fn field_value(metaballs: &Vec<&Metaball>, p: &Vector3<f32>) -> f32 {
+fn field_value(metaballs: &[&Metaball], p: &Vector3<f32>) -> f32 {
     metaballs.iter().map(|mb| mb.field_value(p)).sum()
+}
+
+fn normal_at(active: &[&Metaball], p: Vector3<f32>) -> Vector3<f32> {
+    Vector3::zeros()
 }
 
 fn trace(metaballs: &Vec<Metaball>, ray: &Ray<f32>) -> Option<Color> {
@@ -158,6 +162,8 @@ fn trace(metaballs: &Vec<Metaball>, ray: &Ray<f32>) -> Option<Color> {
                 let qj = field_value(&active, &ray.at(tj));
                 // lerp ray parameter t
                 let t = lerp(tj, ti, (level - qj) / (qi - qj));
+                // compute normal
+                let normal = normal_at(&active, ray.at(t));
                 let g = 1.0 - (t - 2.45) / 0.4;
                 return Some(gray(g));
             }
