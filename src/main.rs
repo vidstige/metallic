@@ -146,15 +146,20 @@ fn trace(metaballs: &Vec<Metaball>, ray: &Ray<f32>) -> Option<f32> {
             active.retain_mut(|mb| mb != &metaball);
         }
         // trace between t0 and t1
-        let n = 25;
+        let n = 10;
+        let level = 0.5;
         for i in 0..n {
-            let t = lerp(t0, t1, i as f32 / n as f32);
-            let q = field_value(&active, &ray.at(t));
-            if q > 0.5 {
-                return Some(t - 2.0);
+            let ti = lerp(t0, t1, i as f32 / n as f32);
+            let qi = field_value(&active, &ray.at(ti));
+            if qi > level {
+                // i-1 was positive
+                let tj = lerp(t0, t1, (i - 1) as f32 / n as f32);
+                // TODO: avoid recomputing qj
+                let qj = field_value(&active, &ray.at(tj));
+                // lerp ray parameter t
+                return Some((level - qj) / (qi - qj));
             }
-        }
-        
+        }   
     }
     None
 }
@@ -184,6 +189,6 @@ fn main() -> io::Result<()>{
     metaballs.push(Metaball::new(Vector3::new(-0.6, 0.0, 0.0), 1.0, 1.0));
     metaballs.push(Metaball::new(Vector3::new(0.6, 0.0, 0.0), 1.0, 1.0));
     render(&mut buffer, 30.0_f32.to_radians(), Vector3::new(0.0, 0.0, -3.0), &metaballs);
-    std::io::stdout().write(&buffer.pixels)?;
+    std::io::stdout().write_all(&buffer.pixels)?;
     Ok(())
 }
