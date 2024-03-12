@@ -49,8 +49,27 @@ impl Sphere<f32> {
     }
 }
 
+#[derive(PartialEq, PartialOrd)]
+struct Metaball {
+    sphere: Sphere<f32>,
+    strength: f32,
+}
+
+impl Metaball {
+    fn new(position: Vector3<f32>, radius: f32, strength: f32) -> Metaball {
+        Metaball {
+            sphere: Sphere::new(position, radius),
+            strength,
+        }
+    }
+    // field value
+    fn q(&self, p: Vector3<f32>) -> f32 {
+        0.0
+    }
+}
+
 struct Metaballs {
-    metaballs: Vec<Sphere<f32>>,
+    metaballs: Vec<Metaball>,
 }
 
 impl Metaballs {
@@ -62,11 +81,11 @@ fn gray(g: f32) -> Color {
     [g, g, g, 0xff]
 }
 
+
 fn direction(x: i32, y: i32, resolution: Resolution, fov: f32) -> Vector3<f32> {
     let (width, height) = resolution;
     let screen = Vector2::new(x as f32, y as f32);
     let center = 0.5 * Vector2::new(width as f32, height as f32);
-
     ((screen - center) / center.min() * (0.5 * fov).tan()).push(1.0).normalize()
 }
 
@@ -103,7 +122,7 @@ fn trace(metaballs: &Metaballs, ray: &Ray<f32>) -> Option<f32> {
     // also keep track of the ray enters (true) or leavs the sphere
     let mut intersections: Vec<_> = Vec::new();
     for metaball in &metaballs.metaballs {
-        if let Some((t0, t1)) = intersection(&ray, &metaball) {
+        if let Some((t0, t1)) = intersection(&ray, &metaball.sphere) {
             intersections.push((t0, metaball, true));
             intersections.push((t1, metaball, false));
         }
@@ -126,10 +145,7 @@ fn trace(metaballs: &Metaballs, ray: &Ray<f32>) -> Option<f32> {
         let n = 10;
         for i in 0..n {
             let t = lerp(t0, t1, i as f32 / n as f32);
-            let sdf: f32 = active.iter().map(|mb| mb.sdf(&ray.at(t))).sum();
-            if sdf < 0.0 {
-                return Some(t);
-            }
+            return Some(1.0);
         }
     }
     None
@@ -157,8 +173,8 @@ fn main() -> io::Result<()>{
     let resolution = parse_resolution(&env::var("RESOLUTION").unwrap_or("506x253".to_string()));
     let mut buffer = Buffer::new(resolution);
     let mut scene = Metaballs::new();
-    scene.metaballs.push(Sphere::new(Vector3::new(-0.6, 0.0, 0.0), 1.0));
-    scene.metaballs.push(Sphere::new(Vector3::new(0.6, 0.0, 0.0), 1.0));
+    scene.metaballs.push(Metaball::new(Vector3::new(-0.6, 0.0, 0.0), 1.0, 1.0));
+    scene.metaballs.push(Metaball::new(Vector3::new(0.6, 0.0, 0.0), 1.0, 1.0));
     render(&mut buffer, 60.0_f32.to_radians(), Vector3::new(0.0, 0.0, -3.0), &scene);
     std::io::stdout().write(&buffer.pixels)?;
     Ok(())
