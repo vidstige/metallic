@@ -1,4 +1,4 @@
-use std::{env, io::{self, Write}};
+use std::{env, f32::consts::TAU, io::{self, Write}};
 extern crate nalgebra as na;
 use na::{Scalar, Vector2, Vector3};
 
@@ -105,6 +105,10 @@ impl Ray<f32> {
     }
 }
 
+fn reflect(v: &Vector3<f32>, normal: &Vector3<f32>) -> Vector3<f32> {
+    v - 2.0 * (v.dot(normal)) * normal
+}
+
 fn intersection(ray: &Ray<f32>, sphere: &Sphere<f32>) -> Option<(f32, f32)> {
     let v = sphere.center - ray.origin;
     let tca = v.dot(&ray.direction);
@@ -129,9 +133,26 @@ fn field_value(metaballs: &[&Metaball], p: &Vector3<f32>) -> f32 {
 fn normal_at(metaballs: &[&Metaball], p: &Vector3<f32>) -> Vector3<f32> {
     let qs: Vec<_> = metaballs.iter().map(|mb| mb.field_value(p)).collect();
     let q: f32 = qs.iter().sum();
-    
     let normal: Vector3<f32> = metaballs.iter().zip(qs).map(|(mb, qi)| qi * mb.normal(p)).sum();
     normal / q
+}
+
+fn clamped_u8(f: f32) -> u8 {
+    (f.clamp(0.0, 1.0) * 255.0) as u8
+}
+
+fn color(r: f32, g: f32, b: f32) -> Color {
+    [clamped_u8(b), clamped_u8(g), clamped_u8(r), 0xff]
+}
+
+fn environment_map(direction: Vector3<f32>) -> Color {
+    // convert to spherical cordinates
+    let theta = direction.y.acos();
+    //let phi = direction.z.signum() * (direction.x / direction.xz().magnitude()).acos();
+    let r = theta / TAU;
+    let g = 0.0;
+    let b = 0.0;
+    color(r, g, b)
 }
 
 fn trace(metaballs: &Vec<Metaball>, ray: &Ray<f32>) -> Option<Color> {
@@ -173,10 +194,10 @@ fn trace(metaballs: &Vec<Metaball>, ray: &Ray<f32>) -> Option<Color> {
                 let t = lerp(tj, ti, (level - qj) / (qi - qj));
                 // compute normal
                 let normal = normal_at(&active, &ray.at(t));
-                let light = Vector3::new(0.0, -1.0, -1.0).normalize();
-                let g = normal.dot(&light);
-                //let g = 1.0 - (t - 2.45) / 0.4
-                return Some(gray(g));
+                //let light = Vector3::new(0.0, -1.0, -1.0).normalize();
+                //let g = normal.dot(&light);
+                let reflected = reflect(&ray.direction, &normal);
+                return Some(environment_map(reflected));
             }
         }
     }
