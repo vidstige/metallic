@@ -121,7 +121,7 @@ fn field_value(metaballs: &Vec<&Metaball>, p: &Vector3<f32>) -> f32 {
     metaballs.iter().map(|mb| mb.field_value(p)).sum()
 }
 
-fn trace(metaballs: &Vec<Metaball>, ray: &Ray<f32>) -> Option<f32> {
+fn trace(metaballs: &Vec<Metaball>, ray: &Ray<f32>) -> Option<Color> {
     // find all intersections with sphere of influence
     // also keep track of the ray enters (true) or leavs the sphere
     let mut intersections: Vec<_> = Vec::new();
@@ -157,9 +157,10 @@ fn trace(metaballs: &Vec<Metaball>, ray: &Ray<f32>) -> Option<f32> {
                 // TODO: avoid recomputing qj
                 let qj = field_value(&active, &ray.at(tj));
                 // lerp ray parameter t
-                return Some((level - qj) / (qi - qj));
+                let t = (level - qj) / (qi - qj);
+                return Some(gray(t - level));
             }
-        }   
+        }
     }
     None
 }
@@ -173,10 +174,11 @@ fn render(target: &mut Buffer, fov: f32, position: Vector3<f32>, metaballs: &Vec
                 direction: direction(x, y, target.resolution, fov),
             };
 
-            if let Some(t) = trace(metaballs, &ray) {
-                pixel(target, x, y, &gray(t));
+            if let Some(color) = trace(metaballs, &ray) {
+                pixel(target, x, y, &color);
             } else {
-                pixel(target, x, y, &gray(0.0));
+                // background
+                pixel(target, x, y, &gray(0.1));
             }
         }
     }
