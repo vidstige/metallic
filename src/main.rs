@@ -60,7 +60,7 @@ impl Sphere<f32> {
 }
 
 // transforms cartesian cordinates x,yz to spherical cordinates r, theta, phi
-fn spherical(cartesian: Vector3<f32>) -> Vector3<f32> {
+fn spherical(cartesian: &Vector3<f32>) -> Vector3<f32> {
     let r = cartesian.magnitude();
     let theta = (cartesian.y / r).acos();
     let phi = cartesian.z.signum() * (cartesian.x / cartesian.xz().magnitude()).acos();
@@ -144,11 +144,11 @@ fn normal_at(metaballs: &[&Metaball], p: &Vector3<f32>) -> Vector3<f32> {
 }
 
 trait EnvironmentMap {
-    fn color(&self, direction: Vector3<f32>) -> Color;
+    fn color(&self, direction: &Vector3<f32>) -> Color;
 }
 
 impl EnvironmentMap for Gradient {
-    fn color(&self, direction: Vector3<f32>) -> Color {
+    fn color(&self, direction: &Vector3<f32>) -> Color {
         let theta = spherical(direction).y;
         self.sample(theta / TAU)
     }
@@ -196,7 +196,7 @@ fn trace(metaballs: &Vec<Metaball>, environment: &dyn EnvironmentMap, ray: &Ray<
                 //let light = Vector3::new(0.0, -1.0, -1.0).normalize();
                 //let g = normal.dot(&light);
                 let reflected = reflect(&ray.direction, &normal);
-                return Some(environment.color(reflected));
+                return Some(environment.color(&reflected));
             }
         }
     }
@@ -216,7 +216,9 @@ fn render(target: &mut Buffer, fov: f32, position: Vector3<f32>, metaballs: &Vec
                 pixel(target, x, y, &color);
             } else {
                 // background
-                pixel(target, x, y, &[0xff, 0, 0, 0]);
+                //let BLACK = [0xff, 0, 0, 0];
+                let color = environment.color(&ray.direction);
+                pixel(target, x, y, &color);
             }
         }
     }
