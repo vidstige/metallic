@@ -83,9 +83,11 @@ impl Metaball {
     fn field_value(&self, p: &Vector3<f32>) -> f32 {
         let d2 = (self.sphere.center - p).magnitude_squared();
         let r2 = self.sphere.radius_squared();
+        if d2 > r2 {
+            return 0.0;
+        }
         let t = 1.0 - (d2 / r2).sqrt();
-        // TODO: Is this range check needed?
-        if t < 0.0 || t > 1.0 { 0.0 } else { self.strength * g(t) }
+        self.strength * g(t)
     }
     fn normal(&self, p: &Vector3<f32>) -> Vector3<f32> {
         // The normal is simply the normalized vector from center to the point o
@@ -179,7 +181,7 @@ fn trace(metaballs: &Vec<Metaball>, environment: &dyn EnvironmentMap, ray: &Ray<
             active.retain_mut(|mb| mb != &metaball);
         }
         // trace between t0 and t1
-        let n = 10;
+        let n = 5;
         let level = 0.3;
         for i in 0..n {
             let ti = lerp(t0, t1, i as f32 / n as f32);
@@ -246,11 +248,24 @@ fn main() -> io::Result<()>{
     let resolution = parse_resolution(&env::var("RESOLUTION").unwrap_or("506x253".to_string()));
     let mut buffer = Buffer::new(resolution);
     let mut metaballs = Vec::new();
-    metaballs.push(Metaball::new(Vector3::new(-0.6, 0.0, 0.0), 1.0, 1.0));
-    metaballs.push(Metaball::new(Vector3::new(0.6, 0.0, 0.0), 1.0, 1.0));
+    for _ in 0..5 {
+        metaballs.push(Metaball::new(Vector3::zeros(), 2.0, 1.0));
+    }
     let environment = metallic();
-    render(&mut buffer, 30.0_f32.to_radians(), Vector3::new(0.0, 0.0, -3.0), &metaballs, &environment);
-    std::io::stdout().write_all(&buffer.pixels)?;
+
+    let n = 300;
+    for i in 0..n {
+        for (j, metaball) in &mut metaballs.iter_mut().enumerate() {
+            let phase = j as f32;
+            let alpha = TAU * (i as f32) / (n as f32) + phase*phase;
+            metaball.sphere.center.x = alpha.cos();
+            metaball.sphere.center.z = alpha.sin();
+            metaball.sphere.center.y = (alpha * 5.0).sin() * 0.5;
+        }
+        render(&mut buffer, 90.0_f32.to_radians(), Vector3::new(0.0, 0.0, -4.0), &metaballs, &environment);
+        std::io::stdout().write_all(&buffer.pixels)?;
+    }
+    
     Ok(())
 }
 
