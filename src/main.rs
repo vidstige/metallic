@@ -226,13 +226,6 @@ fn render(target: &mut Buffer, fov: f32, position: Vector3<f32>, metaballs: &Vec
     }
 }
 
-fn gray() -> Gradient {
-    let mut gradient = Gradient::new();
-    gradient.add_stop(0xff000000);
-    gradient.add_stop(0xffdddddd);
-    gradient
-}
-
 fn metallic() -> Gradient {
     let mut gradient = Gradient::new();
     gradient.add_stop(0xff772884);
