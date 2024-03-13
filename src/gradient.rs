@@ -12,9 +12,9 @@ impl Gradient {
         self.stops.push(color.to_le_bytes());
     }
     pub fn sample(&self, t: f32) -> Color {
-        assert!(t >= 0.0);
+        let tc = t.clamp(0.0, 1.0);
         let n = (self.stops.len() - 1) as f32;
-        let i = (t * n) as usize;
-        mix(self.stops[i], self.stops[i + 1], (t - (i as f32) / n) * n)
+        let i = (tc * n) as usize;
+        mix(self.stops[i], self.stops[i + 1], (tc - (i as f32) / n) * n)
     }
 }
