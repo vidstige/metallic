@@ -3,9 +3,10 @@ extern crate nalgebra as na;
 use na::{Scalar, Vector2, Vector3};
 mod gradient;
 use gradient::Gradient;
+mod color;
+use crate::color::Color;
 
 type Resolution = (i32, i32);
-type Color = [u8; 4];
 
 fn parse_resolution(s: &String) -> Resolution {
     let mut parts = s.split("x");
