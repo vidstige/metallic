@@ -230,16 +230,12 @@ fn gray() -> Gradient {
 
 fn metallic() -> Gradient {
     let mut gradient = Gradient::new();
-    gradient.add_stop(0xff926c5f);
-    gradient.add_stop(0xffa5887b);
-    gradient.add_stop(0xffe5d4c9);
-    gradient.add_stop(0xffdfcec3);
-    gradient.add_stop(0xffcdb6a6);
-    gradient.add_stop(0xffc1a795);
-    gradient.add_stop(0xffc1a898);
-    gradient.add_stop(0xffc5a895);
-    gradient.add_stop(0xffb89380);
-    gradient.add_stop(0xffa07260);
+    gradient.add_stop(0xff772884);
+    gradient.add_stop(0xffDFC0FB);
+    gradient.add_stop(0xff842996);
+    gradient.add_stop(0xff671D77);
+    gradient.add_stop(0xff42104D);
+    gradient.add_stop(0xffD3B4E9);
     gradient
 }
 
@@ -254,3 +250,4 @@ fn main() -> io::Result<()>{
     std::io::stdout().write_all(&buffer.pixels)?;
     Ok(())
 }
+
