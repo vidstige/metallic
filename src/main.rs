@@ -3,24 +3,12 @@ extern crate nalgebra as na;
 use na::{Vector2, Vector3};
 mod gradient;
 mod sphere;
+mod color;
+mod resolution;
 use sphere::{Sphere, spherical};
 use gradient::Gradient;
-mod color;
+use resolution::{Resolution, parse_resolution, area};
 use crate::color::Color;
-
-type Resolution = (i32, i32);
-
-fn parse_resolution(s: &String) -> Resolution {
-    let mut parts = s.split("x");
-    let width = parts.next().unwrap().parse().unwrap();
-    let height = parts.next().unwrap().parse().unwrap();
-    (width, height)
-}
-
-fn area(resolution: Resolution) -> usize {
-    let (width, height) = resolution;
-    (width * height) as usize
-}
 
 struct Buffer {
     resolution: Resolution,
