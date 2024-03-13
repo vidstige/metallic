@@ -1,7 +1,9 @@
 use std::{env, f32::consts::TAU, io::{self, Write}};
 extern crate nalgebra as na;
-use na::{Scalar, Vector2, Vector3};
+use na::{Vector2, Vector3};
 mod gradient;
+mod sphere;
+use sphere::{Sphere, spherical};
 use gradient::Gradient;
 mod color;
 use crate::color::Color;
@@ -44,28 +46,6 @@ fn g(t: f32) -> f32 {
     t * t * t * (t * (t * 6.0 - 15.0) + 10.0)
 }
 
-#[derive(PartialEq, PartialOrd)]
-struct Sphere<T: Scalar> {
-    center: Vector3<T>,
-    radius: T,
-}
-
-impl Sphere<f32> {
-    fn new(center: Vector3<f32>, radius: f32) -> Sphere<f32> {
-        Sphere {center, radius}
-    }
-    fn radius_squared(&self) -> f32 {
-        self.radius * self.radius
-    }
-}
-
-// transforms cartesian cordinates x,yz to spherical cordinates r, theta, phi
-fn spherical(cartesian: &Vector3<f32>) -> Vector3<f32> {
-    let r = cartesian.magnitude();
-    let theta = (cartesian.y / r).acos();
-    let phi = cartesian.z.signum() * (cartesian.x / cartesian.xz().magnitude()).acos();
-    Vector3::new(r, theta, phi)
-}
 
 #[derive(PartialEq, PartialOrd)]
 struct Metaball {
