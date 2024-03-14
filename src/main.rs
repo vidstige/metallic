@@ -1,7 +1,7 @@
 use std::{env, f32::consts::{PI, TAU}, io::{self, Write}};
 extern crate nalgebra as na;
 use color::mix;
-use na::{Point2, Vector2, Vector3};
+use na::{Point2, Point3, Scalar, Vector2, Vector3};
 mod gradient;
 mod sphere;
 mod color;
@@ -43,13 +43,13 @@ struct Metaball {
 }
 
 impl Metaball {
-    fn new(position: Vector3<f32>, radius: f32, strength: f32) -> Metaball {
+    fn new(position: Point3<f32>, radius: f32, strength: f32) -> Metaball {
         Metaball {
             sphere: Sphere::new(position, radius),
             strength,
         }
     }
-    fn field_value(&self, p: &Vector3<f32>) -> f32 {
+    fn field_value(&self, p: &Point3<f32>) -> f32 {
         let d2 = (self.sphere.center - p).magnitude_squared();
         let r2 = self.sphere.radius_squared();
         if d2 > r2 {
@@ -58,19 +58,19 @@ impl Metaball {
         let t = 1.0 - (d2 / r2).sqrt();
         self.strength * g(t)
     }
-    fn normal(&self, p: &Vector3<f32>) -> Vector3<f32> {
+    fn normal(&self, p: &Point3<f32>) -> Vector3<f32> {
         // The normal is simply the normalized vector from center to the point o
         (p - self.sphere.center).normalize()
     }
 }
 
-struct Ray<T> {
-    origin: Vector3<T>,
+struct Ray<T: Scalar> {
+    origin: Point3<T>,
     direction: Vector3<T>,
 }
 
 impl Ray<f32> {
-    fn at(&self, t: f32) -> Vector3<f32> {
+    fn at(&self, t: f32) -> Point3<f32> {
         self.origin + self.direction * t
     }
 }
@@ -96,11 +96,11 @@ fn lerp(a: f32, b: f32, t: f32) -> f32 {
     (1.0 - t) * a + t * b
 }
 
-fn field_value(metaballs: &[&Metaball], p: &Vector3<f32>) -> f32 {
+fn field_value(metaballs: &[&Metaball], p: &Point3<f32>) -> f32 {
     metaballs.iter().map(|mb| mb.field_value(p)).sum()
 }
 
-fn normal_at(metaballs: &[&Metaball], p: &Vector3<f32>) -> Vector3<f32> {
+fn normal_at(metaballs: &[&Metaball], p: &Point3<f32>) -> Vector3<f32> {
     let qs: Vec<_> = metaballs.iter().map(|mb| mb.field_value(p)).collect();
     let q: f32 = qs.iter().sum();
     let normal: Vector3<f32> = metaballs.iter().zip(qs).map(|(mb, qi)| qi * mb.normal(p)).sum();
@@ -181,7 +181,7 @@ fn trace(metaballs: &Vec<Metaball>, environment: &dyn EnvironmentMap, ray: &Ray<
 
 struct Camera {
     resolution: Resolution,
-    position: Vector3<f32>,
+    position: Point3<f32>,
     fov: f32,
 }
 
@@ -231,12 +231,12 @@ fn main() -> io::Result<()>{
     let mut buffer = Buffer::new(resolution);
     let mut metaballs = Vec::new();
     for _ in 0..5 {
-        metaballs.push(Metaball::new(Vector3::zeros(), 2.0, 1.0));
+        metaballs.push(Metaball::new(Point3::origin(), 2.0, 1.0));
     }
     let environment = metallic();
     let camera = Camera {
         resolution,
-        position: Vector3::new(0.0, 0.0, -4.0),
+        position: Point3::new(0.0, 0.0, -4.0),
         fov: 90.0_f32.to_radians(),
     };
     let n = 300;

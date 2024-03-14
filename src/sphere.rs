@@ -1,13 +1,13 @@
-use na::{Scalar, Vector3};
+use na::{Scalar, Vector3, Point3};
 
 #[derive(PartialEq, PartialOrd)]
 pub struct Sphere<T: Scalar> {
-    pub center: Vector3<T>,
+    pub center: Point3<T>,
     pub radius: T,
 }
 
 impl Sphere<f32> {
-    pub fn new(center: Vector3<f32>, radius: f32) -> Sphere<f32> {
+    pub fn new(center: Point3<f32>, radius: f32) -> Sphere<f32> {
         Sphere {center, radius}
     }
     pub fn radius_squared(&self) -> f32 {
