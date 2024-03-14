@@ -63,13 +63,6 @@ impl Metaball {
     }
 }
 
-fn direction(x: i32, y: i32, resolution: Resolution, fov: f32) -> Vector3<f32> {
-    let (width, height) = resolution;
-    let screen = Vector2::new(x as f32, y as f32);
-    let center = 0.5 * Vector2::new(width as f32, height as f32);
-    ((screen - center) / center.min() * (0.5 * fov).tan()).push(1.0).normalize()
-}
-
 struct Ray<T> {
     origin: Vector3<T>,
     direction: Vector3<T>,
@@ -173,13 +166,28 @@ fn trace(metaballs: &Vec<Metaball>, environment: &dyn EnvironmentMap, ray: &Ray<
     None
 }
 
-fn render(target: &mut Buffer, fov: f32, position: Vector3<f32>, metaballs: &Vec<Metaball>, environment: &dyn EnvironmentMap) {
+struct Camera {
+    resolution: Resolution,
+    position: Vector3<f32>,
+    fov: f32,
+}
+
+impl Camera {
+    fn ray_direction(&self, x: i32, y: i32) -> Vector3<f32> {
+        let (width, height) = self.resolution;
+        let screen = Vector2::new(x as f32, y as f32);
+        let center = 0.5 * Vector2::new(width as f32, height as f32);
+        ((screen - center) / center.min() * (0.5 * self.fov).tan()).push(1.0).normalize()
+    }
+}
+
+fn render(target: &mut Buffer, camera: &Camera, metaballs: &Vec<Metaball>, environment: &dyn EnvironmentMap) {
     let (width, height) = target.resolution;
     for y in 0..height {
         for x in 0..width {
             let ray = Ray{
-                origin: position,
-                direction: direction(x, y, target.resolution, fov),
+                origin: camera.position,
+                direction: camera.ray_direction(x, y),
             };
 
             if let Some(color) = trace(metaballs, environment, &ray) {
@@ -213,7 +221,11 @@ fn main() -> io::Result<()>{
         metaballs.push(Metaball::new(Vector3::zeros(), 2.0, 1.0));
     }
     let environment = metallic();
-
+    let camera = Camera {
+        resolution,
+        position: Vector3::new(0.0, 0.0, -4.0),
+        fov: 90.0_f32.to_radians(),
+    };
     let n = 300;
     for i in 0..n {
         for (j, metaball) in &mut metaballs.iter_mut().enumerate() {
@@ -223,7 +235,7 @@ fn main() -> io::Result<()>{
             metaball.sphere.center.z = alpha.sin();
             metaball.sphere.center.y = (alpha * 5.0).sin() * 0.5;
         }
-        render(&mut buffer, 90.0_f32.to_radians(), Vector3::new(0.0, 0.0, -4.0), &metaballs, &environment);
+        render(&mut buffer, &camera, &metaballs, &environment);
         std::io::stdout().write_all(&buffer.pixels)?;
     }
     
