@@ -1,7 +1,7 @@
 use std::{env, f32::consts::{PI, TAU}, io::{self, Write}};
 extern crate nalgebra as na;
 use color::mix;
-use na::{Vector2, Vector3};
+use na::{Point2, Vector2, Vector3};
 mod gradient;
 mod sphere;
 mod color;
@@ -186,10 +186,10 @@ struct Camera {
 }
 
 impl Camera {
-    fn ray_direction(&self, screen: &Vector2<f32>) -> Vector3<f32> {
+    fn ray_direction(&self, screen: &Point2<f32>) -> Vector3<f32> {
         let (width, height) = self.resolution;
         let center = 0.5 * Vector2::new(width as f32, height as f32);
-        ((screen - center) / center.min() * (0.5 * self.fov).tan()).push(1.0).normalize()
+        ((screen - center) / center.min() * (0.5 * self.fov).tan()).to_homogeneous().normalize()
     }
 }
 
@@ -197,7 +197,7 @@ fn render(target: &mut Buffer, camera: &Camera, metaballs: &Vec<Metaball>, envir
     let (width, height) = target.resolution;
     for y in 0..height {
         for x in 0..width {
-            let screen = Vector2::new(x as f32, y as f32);
+            let screen = Point2::new(x as f32, y as f32);
             let ray = Ray{
                 origin: camera.position,
                 direction: camera.ray_direction(&screen),
