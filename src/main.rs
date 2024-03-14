@@ -125,8 +125,7 @@ trait EnvironmentMap {
 impl EnvironmentMap for Gradient {
     fn color(&self, direction: &Vector3<f32>) -> Color {
         let s = spherical(direction);
-        let (r, theta, phi) = (s.x, s.y, s.z);
-        // gradient
+        let (theta, phi) = (s.y, s.z);
         mix(self.sample(theta / TAU), checker(phi / PI, theta / PI, (16, 16)), 0.2)
     }
 }
@@ -187,9 +186,8 @@ struct Camera {
 }
 
 impl Camera {
-    fn ray_direction(&self, x: i32, y: i32) -> Vector3<f32> {
+    fn ray_direction(&self, screen: &Vector2<f32>) -> Vector3<f32> {
         let (width, height) = self.resolution;
-        let screen = Vector2::new(x as f32, y as f32);
         let center = 0.5 * Vector2::new(width as f32, height as f32);
         ((screen - center) / center.min() * (0.5 * self.fov).tan()).push(1.0).normalize()
     }
@@ -199,9 +197,10 @@ fn render(target: &mut Buffer, camera: &Camera, metaballs: &Vec<Metaball>, envir
     let (width, height) = target.resolution;
     for y in 0..height {
         for x in 0..width {
+            let screen = Vector2::new(x as f32, y as f32);
             let ray = Ray{
                 origin: camera.position,
-                direction: camera.ray_direction(x, y),
+                direction: camera.ray_direction(&screen),
             };
 
             if let Some(color) = trace(metaballs, environment, &ray) {
