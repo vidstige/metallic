@@ -1,5 +1,6 @@
-use std::{env, f32::consts::TAU, io::{self, Write}};
+use std::{env, f32::consts::{PI, TAU}, io::{self, Write}};
 extern crate nalgebra as na;
+use color::mix;
 use na::{Vector2, Vector3};
 mod gradient;
 mod sphere;
@@ -106,14 +107,27 @@ fn normal_at(metaballs: &[&Metaball], p: &Vector3<f32>) -> Vector3<f32> {
     normal / q
 }
 
+fn checker(x: f32, y: f32, resolution: Resolution) -> Color {
+    let (w, h) = resolution;
+    let black = 0xff000000_u32.to_le_bytes();
+    let white = 0xffffffff_u32.to_le_bytes();
+    if ((x * w as f32) as i32 + (y * h as f32) as i32) % 2 == 0{
+        white
+    } else {
+        black
+    }
+}
+
 trait EnvironmentMap {
     fn color(&self, direction: &Vector3<f32>) -> Color;
 }
 
 impl EnvironmentMap for Gradient {
     fn color(&self, direction: &Vector3<f32>) -> Color {
-        let theta = spherical(direction).y;
-        self.sample(theta / TAU)
+        let s = spherical(direction);
+        let (r, theta, phi) = (s.x, s.y, s.z);
+        // gradient
+        mix(self.sample(theta / TAU), checker(phi / PI, theta / PI, (16, 16)), 0.2)
     }
 }
 
