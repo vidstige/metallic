@@ -1,6 +1,6 @@
 use std::{env, f32::consts::{PI, TAU}, io::{self, Write}};
 extern crate nalgebra as na;
-use color::{mix, mix_colors};
+use color::mix_colors;
 use na::{Point2, Point3, Scalar, Vector2, Vector3};
 mod gradient;
 mod sphere;
@@ -143,8 +143,10 @@ impl EnvironmentMap for GradientEnvironment {
         let (theta, phi) = (s.y, s.z);
         let mut colors = Vec::new();
         colors.push((self.gradient.sample(theta / TAU), 1.0));
-        
         colors.push((checker(phi / PI, theta / PI, (16, 16)), 0.2));
+        for light in self.lights.iter() {
+            colors.push((0xffffffff_u32.to_le_bytes(), light.color(direction)));
+        }
         //let checker = ;
         mix_colors(&colors)
     }
