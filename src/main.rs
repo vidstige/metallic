@@ -1,7 +1,7 @@
 use std::{env, f32::consts::{PI, TAU}, io::{self, Write}};
 extern crate nalgebra as na;
 use color::mix_colors;
-use na::{Point2, Point3, Scalar, Vector2, Vector3};
+use na::{Isometry3, Point2, Point3, Scalar, Vector2, Vector3};
 mod gradient;
 mod sphere;
 mod color;
@@ -144,9 +144,9 @@ impl EnvironmentMap for GradientEnvironment {
         let mut colors = Vec::new();
         colors.push((self.gradient.sample(theta / TAU), 1.0));
         colors.push((checker(phi / PI, theta / PI, (16, 16)), 0.2));
-        for light in self.lights.iter() {
+        /*for light in self.lights.iter() {
             colors.push((0xffffffff_u32.to_le_bytes(), light.color(direction)));
-        }
+        }*/
         //let checker = ;
         mix_colors(&colors)
     }
@@ -203,7 +203,7 @@ fn trace(metaballs: &Vec<Metaball>, environment: &dyn EnvironmentMap, ray: &Ray<
 
 struct Camera {
     resolution: Resolution,
-    position: Point3<f32>,
+    pose: Isometry3<f32>,
     fov: f32,
 }
 
@@ -221,7 +221,7 @@ fn render(target: &mut Buffer, camera: &Camera, metaballs: &Vec<Metaball>, envir
         for x in 0..width {
             let screen = Point2::new(x as f32, y as f32);
             let ray = Ray{
-                origin: camera.position,
+                origin: camera.pose.translation.inverse_transform_point(&Point3::origin()),
                 direction: camera.ray_direction(&screen),
             };
 
@@ -268,7 +268,11 @@ fn main() -> io::Result<()>{
     };
     let camera = Camera {
         resolution,
-        position: Point3::new(0.0, 0.0, -4.0),
+        pose: Isometry3::look_at_lh(
+            &Point3::new(0.0, 0.0, -4.0),
+            &Point3::origin(),
+            &Vector3::new(0.0, -1.0, 0.0),
+        ),
         fov: 120.0_f32.to_radians(),
     };
     let n = 260;
