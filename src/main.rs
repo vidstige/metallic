@@ -231,22 +231,22 @@ fn main() -> io::Result<()>{
     let mut buffer = Buffer::new(resolution);
     let mut metaballs = Vec::new();
     for _ in 0..5 {
-        metaballs.push(Metaball::new(Point3::origin(), 2.0, 1.0));
+        metaballs.push(Metaball::new(Point3::origin(), 3.0, 0.5));
     }
     let environment = metallic();
     let camera = Camera {
         resolution,
         position: Point3::new(0.0, 0.0, -4.0),
-        fov: 90.0_f32.to_radians(),
+        fov: 120.0_f32.to_radians(),
     };
-    let n = 300;
+    let n = 260;
     for i in 0..n {
         for (j, metaball) in &mut metaballs.iter_mut().enumerate() {
             let phase = j as f32;
             let alpha = TAU * (i as f32) / (n as f32) + phase*phase;
-            metaball.sphere.center.x = alpha.cos();
-            metaball.sphere.center.z = alpha.sin();
-            metaball.sphere.center.y = (alpha * 5.0).sin() * 0.5;
+            metaball.sphere.center.x = (13.0 * alpha).cos() * 1.0;
+            metaball.sphere.center.y = (5.0 * alpha).sin() * 1.0;
+            metaball.sphere.center.z = (2.0 * alpha).sin() * 1.0;
         }
         render(&mut buffer, &camera, &metaballs, &environment);
         std::io::stdout().write_all(&buffer.pixels)?;
