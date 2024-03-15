@@ -1,6 +1,6 @@
 use std::{env, f32::consts::{PI, TAU}, io::{self, Write}};
 extern crate nalgebra as na;
-use color::mix;
+use color::{mix, mix_colors};
 use na::{Point2, Point3, Scalar, Vector2, Vector3};
 mod gradient;
 mod sphere;
@@ -122,11 +122,31 @@ trait EnvironmentMap {
     fn color(&self, direction: &Vector3<f32>) -> Color;
 }
 
-impl EnvironmentMap for Gradient {
+struct Light {
+    direction: Vector3<f32>,
+}
+
+impl Light {
+    fn color(&self, direction: &Vector3<f32>) -> f32 {
+        self.direction.dot(direction)
+    }
+}
+
+struct GradientEnvironment {
+    gradient: Gradient,
+    lights: Vec<Light>,
+}
+
+impl EnvironmentMap for GradientEnvironment {
     fn color(&self, direction: &Vector3<f32>) -> Color {
         let s = spherical(direction);
         let (theta, phi) = (s.y, s.z);
-        mix(self.sample(theta / TAU), checker(phi / PI, theta / PI, (16, 16)), 0.2)
+        let mut colors = Vec::new();
+        colors.push((self.gradient.sample(theta / TAU), 1.0));
+        
+        colors.push((checker(phi / PI, theta / PI, (16, 16)), 0.2));
+        //let checker = ;
+        mix_colors(&colors)
     }
 }
 
@@ -226,6 +246,13 @@ fn metallic() -> Gradient {
     gradient
 }
 
+fn two_point_rig() -> Vec<Light> {
+    vec![
+        Light{direction: Vector3::new(1.0, 1.0, 1.0)},
+        Light{direction: Vector3::new(-1.0, 1.0, 1.0)},
+    ]
+}
+
 fn main() -> io::Result<()>{
     let resolution = parse_resolution(&env::var("RESOLUTION").unwrap_or("506x253".to_string()));
     let mut buffer = Buffer::new(resolution);
@@ -233,7 +260,10 @@ fn main() -> io::Result<()>{
     for _ in 0..5 {
         metaballs.push(Metaball::new(Point3::origin(), 3.0, 0.5));
     }
-    let environment = metallic();
+    let environment = GradientEnvironment {
+        gradient: metallic(),
+        lights: two_point_rig(),
+    };
     let camera = Camera {
         resolution,
         position: Point3::new(0.0, 0.0, -4.0),
