@@ -180,7 +180,7 @@ struct Light {
 }
 
 impl Light {
-    fn color(&self, direction: &Vector3<f32>) -> f32 {
+    fn intensity(&self, direction: &Vector3<f32>) -> f32 {
         self.direction.dot(direction)
     }
 }
@@ -212,8 +212,12 @@ struct Scene<'a> {
 
 fn trace(scene: &Scene, ray: &Ray<f32>) -> Color {
     if let Some(out) = scene.metaballs.trace(ray) {
+        // reflect ray
         let reflected = reflect(&ray.direction, &out.direction);
-        scene.environment.color(&reflected)
+        let white = 0xffffffff_u32.to_le_bytes();
+        let mut colors: Vec<_> = scene.lights.iter().map(|light| (white, light.intensity(&ray.direction))).collect();
+        colors.push((scene.environment.color(&reflected), 1.0));
+        mix_colors(&colors)
     } else {
         // background
         scene.environment.color(&ray.direction)
