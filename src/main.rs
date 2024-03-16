@@ -79,7 +79,7 @@ fn reflect(v: &Vector3<f32>, normal: &Vector3<f32>) -> Vector3<f32> {
     v - 2.0 * (v.dot(normal)) * normal
 }
 
-fn intersection(ray: &Ray<f32>, sphere: &Sphere<f32>) -> Option<(f32, f32)> {
+fn sphere_ray_intersections(ray: &Ray<f32>, sphere: &Sphere<f32>) -> Option<(f32, f32)> {
     let v = sphere.center - ray.origin;
     let tca = v.dot(&ray.direction);
     //if tca < 0.0 { return None; }
@@ -162,7 +162,7 @@ fn trace(metaballs: &Vec<Metaball>, environment: &dyn EnvironmentMap, ray: &Ray<
     // also keep track of the ray enters (true) or leavs the sphere
     let mut intersections: Vec<_> = Vec::new();
     for metaball in metaballs {
-        if let Some((t0, t1)) = intersection(&ray, &metaball.sphere) {
+        if let Some((t0, t1)) = sphere_ray_intersections(&ray, &metaball.sphere) {
             intersections.push((t0, metaball, true));
             intersections.push((t1, metaball, false));
         }
