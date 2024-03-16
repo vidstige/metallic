@@ -75,6 +75,59 @@ impl Ray<f32> {
     }
 }
 
+trait Traceable<T: Scalar> {
+    fn trace(&self, ray: &Ray<T>) -> Option<Ray<T>>;
+}
+
+impl Traceable<f32> for Vec<Metaball> {
+    fn trace(&self, ray: &Ray<f32>) -> Option<Ray<f32>> {
+        // find all intersections with sphere of influence
+        // also keep track of the ray enters (true) or leavs the sphere
+        let mut intersections: Vec<_> = Vec::new();
+        for metaball in self {
+            if let Some((t0, t1)) = sphere_ray_intersections(&ray, &metaball.sphere) {
+                intersections.push((t0, metaball, true));
+                intersections.push((t1, metaball, false));
+            }
+        }
+
+        // sort intersections by ray parameter t
+        intersections.sort_unstable_by(|(a, _, _), (b, _, _)| a.partial_cmp(b).unwrap());
+
+        // keep track of "active" spheres
+        let mut active = Vec::new();
+        for slice in intersections.windows(2) {
+            let (t0, metaball, enter) = slice[0];
+            let (t1, _, _) = slice[1];
+            if enter {
+                active.push(metaball);
+            } else {
+                active.retain_mut(|mb| mb != &metaball);
+            }
+            // trace between t0 and t1
+            let n = 5;
+            let level = 0.3;
+            for i in 0..n {
+                let ti = lerp(t0, t1, i as f32 / n as f32);
+                let qi = field_value(&active, &ray.at(ti));
+                if qi > level {
+                    // i-1 was positive
+                    let tj = lerp(t0, t1, (i - 1) as f32 / n as f32);
+                    // TODO: avoid recomputing qj
+                    let qj = field_value(&active, &ray.at(tj));
+                    // lerp ray parameter t
+                    let t = lerp(tj, ti, (level - qj) / (qi - qj));
+                    // compute normal
+                    let position = ray.at(t);
+                    let normal = normal_at(&active, &position);
+                    return Some(Ray{origin: position, direction: normal});
+                }
+            }
+        }
+        None
+    }
+}
+
 fn reflect(v: &Vector3<f32>, normal: &Vector3<f32>) -> Vector3<f32> {
     v - 2.0 * (v.dot(normal)) * normal
 }
@@ -157,53 +210,14 @@ struct Scene<'a> {
     environment: &'a dyn EnvironmentMap,
 }
 
-fn trace(metaballs: &Vec<Metaball>, environment: &dyn EnvironmentMap, ray: &Ray<f32>) -> Option<Color> {
-    // find all intersections with sphere of influence
-    // also keep track of the ray enters (true) or leavs the sphere
-    let mut intersections: Vec<_> = Vec::new();
-    for metaball in metaballs {
-        if let Some((t0, t1)) = sphere_ray_intersections(&ray, &metaball.sphere) {
-            intersections.push((t0, metaball, true));
-            intersections.push((t1, metaball, false));
-        }
+fn trace(metaballs: &Vec<Metaball>, environment: &dyn EnvironmentMap, ray: &Ray<f32>) -> Color {
+    if let Some(out) = metaballs.trace(ray) {
+        let reflected = reflect(&ray.direction, &out.direction);
+        environment.color(&reflected)
+    } else {
+        // background
+        environment.color(&ray.direction)
     }
-
-    // sort intersections by ray parameter t
-    intersections.sort_unstable_by(|(a, _, _), (b, _, _)| a.partial_cmp(b).unwrap());
-
-    // keep track of "active" spheres
-    let mut active = Vec::new();
-    for slice in intersections.windows(2) {
-        let (t0, metaball, enter) = slice[0];
-        let (t1, _, _) = slice[1];
-        if enter {
-            active.push(metaball);
-        } else {
-            active.retain_mut(|mb| mb != &metaball);
-        }
-        // trace between t0 and t1
-        let n = 5;
-        let level = 0.3;
-        for i in 0..n {
-            let ti = lerp(t0, t1, i as f32 / n as f32);
-            let qi = field_value(&active, &ray.at(ti));
-            if qi > level {
-                // i-1 was positive
-                let tj = lerp(t0, t1, (i - 1) as f32 / n as f32);
-                // TODO: avoid recomputing qj
-                let qj = field_value(&active, &ray.at(tj));
-                // lerp ray parameter t
-                let t = lerp(tj, ti, (level - qj) / (qi - qj));
-                // compute normal
-                let normal = normal_at(&active, &ray.at(t));
-                //let light = Vector3::new(0.0, -1.0, -1.0).normalize();
-                //let g = normal.dot(&light);
-                let reflected = reflect(&ray.direction, &normal);
-                return Some(environment.color(&reflected));
-            }
-        }
-    }
-    None
 }
 
 struct Camera {
@@ -230,13 +244,8 @@ fn render(scene: &Scene, camera: &Camera, target: &mut Buffer) {
                 direction: camera.pose.rotation.inverse_transform_vector(&camera.ray_direction(&screen)),
             };
 
-            if let Some(color) = trace(&scene.metaballs, scene.environment, &ray) {
-                pixel(target, x, y, &color);
-            } else {
-                // background
-                let color = scene.environment.color(&ray.direction);
-                pixel(target, x, y, &color);
-            }
+            let color = trace(&scene.metaballs, scene.environment, &ray);
+            pixel(target, x, y, &color);
         }
     }
 }
