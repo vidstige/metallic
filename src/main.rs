@@ -82,7 +82,7 @@ fn reflect(v: &Vector3<f32>, normal: &Vector3<f32>) -> Vector3<f32> {
 fn intersection(ray: &Ray<f32>, sphere: &Sphere<f32>) -> Option<(f32, f32)> {
     let v = sphere.center - ray.origin;
     let tca = v.dot(&ray.direction);
-    // if (tca < 0) return false;
+    //if tca < 0.0 { return None; }
     let d2 = v.dot(&v) - tca * tca;
     let r2 = sphere.radius * sphere.radius;
     if d2 > r2 {
@@ -221,15 +221,14 @@ fn render(target: &mut Buffer, camera: &Camera, metaballs: &Vec<Metaball>, envir
         for x in 0..width {
             let screen = Point2::new(x as f32, y as f32);
             let ray = Ray{
-                origin: camera.pose.translation.inverse_transform_point(&Point3::origin()),
-                direction: camera.ray_direction(&screen),
+                origin: camera.pose.inverse_transform_point(&Point3::origin()),
+                direction: camera.pose.rotation.transform_vector(&camera.ray_direction(&screen)),
             };
 
             if let Some(color) = trace(metaballs, environment, &ray) {
                 pixel(target, x, y, &color);
             } else {
                 // background
-                //let BLACK = [0xff, 0, 0, 0];
                 let color = environment.color(&ray.direction);
                 pixel(target, x, y, &color);
             }
@@ -266,23 +265,26 @@ fn main() -> io::Result<()>{
         gradient: metallic(),
         lights: two_point_rig(),
     };
-    let camera = Camera {
+    let mut camera = Camera {
         resolution,
-        pose: Isometry3::look_at_lh(
-            &Point3::new(0.0, 0.0, -4.0),
-            &Point3::origin(),
-            &Vector3::new(0.0, -1.0, 0.0),
-        ),
+        pose: Isometry3::identity(),
         fov: 120.0_f32.to_radians(),
     };
     let n = 260;
     for i in 0..n {
+        let alpha = TAU * (i as f32) / (n as f32);
+        let position = Point3::new(alpha.sin() * 5.0, 0.0, alpha.cos() * 5.0);
+        camera.pose = Isometry3::look_at_lh(
+            &position,
+            &Point3::origin(),
+            &Vector3::new(0.0, -1.0, 0.0),
+        );
         for (j, metaball) in &mut metaballs.iter_mut().enumerate() {
             let phase = j as f32;
-            let alpha = TAU * (i as f32) / (n as f32) + phase*phase;
-            metaball.sphere.center.x = (13.0 * alpha).cos() * 1.0;
-            metaball.sphere.center.y = (5.0 * alpha).sin() * 1.0;
-            metaball.sphere.center.z = (2.0 * alpha).sin() * 1.0;
+            let beta = alpha + phase * phase;
+            metaball.sphere.center.x = (13.0 * beta).cos() * 1.0;
+            metaball.sphere.center.y = (5.0 * beta).sin() * 1.0;
+            metaball.sphere.center.z = (2.0 * beta).sin() * 1.0;
         }
         render(&mut buffer, &camera, &metaballs, &environment);
         std::io::stdout().write_all(&buffer.pixels)?;
