@@ -222,7 +222,7 @@ fn render(target: &mut Buffer, camera: &Camera, metaballs: &Vec<Metaball>, envir
             let screen = Point2::new(x as f32, y as f32);
             let ray = Ray{
                 origin: camera.pose.inverse_transform_point(&Point3::origin()),
-                direction: camera.pose.rotation.transform_vector(&camera.ray_direction(&screen)),
+                direction: camera.pose.rotation.inverse_transform_vector(&camera.ray_direction(&screen)),
             };
 
             if let Some(color) = trace(metaballs, environment, &ray) {
@@ -265,20 +265,18 @@ fn main() -> io::Result<()>{
         gradient: metallic(),
         lights: two_point_rig(),
     };
-    let mut camera = Camera {
+    let camera = Camera {
         resolution,
-        pose: Isometry3::identity(),
+        pose: Isometry3::look_at_lh(
+            &Point3::new(1.0, 1.0, -5.0),
+            &Point3::origin(),
+            &Vector3::new(0.0, -1.0, 0.0),
+        ),
         fov: 120.0_f32.to_radians(),
     };
     let n = 260;
     for i in 0..n {
         let alpha = TAU * (i as f32) / (n as f32);
-        let position = Point3::new(alpha.sin() * 5.0, 0.0, alpha.cos() * 5.0);
-        camera.pose = Isometry3::look_at_lh(
-            &position,
-            &Point3::origin(),
-            &Vector3::new(0.0, -1.0, 0.0),
-        );
         for (j, metaball) in &mut metaballs.iter_mut().enumerate() {
             let phase = j as f32;
             let beta = alpha + phase * phase;
