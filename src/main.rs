@@ -134,7 +134,6 @@ impl Light {
 
 struct GradientEnvironment {
     gradient: Gradient,
-    lights: Vec<Light>,
 }
 
 impl EnvironmentMap for GradientEnvironment {
@@ -150,6 +149,12 @@ impl EnvironmentMap for GradientEnvironment {
         //let checker = ;
         mix_colors(&colors)
     }
+}
+
+struct Scene<'a> {
+    metaballs: Vec<Metaball>,
+    lights: Vec<Light>,
+    environment: &'a dyn EnvironmentMap,
 }
 
 fn trace(metaballs: &Vec<Metaball>, environment: &dyn EnvironmentMap, ray: &Ray<f32>) -> Option<Color> {
@@ -215,7 +220,7 @@ impl Camera {
     }
 }
 
-fn render(target: &mut Buffer, camera: &Camera, metaballs: &Vec<Metaball>, environment: &dyn EnvironmentMap) {
+fn render(scene: &Scene, camera: &Camera, target: &mut Buffer) {
     let (width, height) = target.resolution;
     for y in 0..height {
         for x in 0..width {
@@ -225,11 +230,11 @@ fn render(target: &mut Buffer, camera: &Camera, metaballs: &Vec<Metaball>, envir
                 direction: camera.pose.rotation.inverse_transform_vector(&camera.ray_direction(&screen)),
             };
 
-            if let Some(color) = trace(metaballs, environment, &ray) {
+            if let Some(color) = trace(&scene.metaballs, scene.environment, &ray) {
                 pixel(target, x, y, &color);
             } else {
                 // background
-                let color = environment.color(&ray.direction);
+                let color = scene.environment.color(&ray.direction);
                 pixel(target, x, y, &color);
             }
         }
@@ -261,9 +266,12 @@ fn main() -> io::Result<()>{
     for _ in 0..5 {
         metaballs.push(Metaball::new(Point3::origin(), 3.0, 0.5));
     }
-    let environment = GradientEnvironment {
-        gradient: metallic(),
+    let mut scene = Scene {
+        metaballs: metaballs,
         lights: two_point_rig(),
+        environment: &GradientEnvironment {
+            gradient: metallic(),
+        },
     };
     let camera = Camera {
         resolution,
@@ -277,14 +285,14 @@ fn main() -> io::Result<()>{
     let n = 260;
     for i in 0..n {
         let alpha = TAU * (i as f32) / (n as f32);
-        for (j, metaball) in &mut metaballs.iter_mut().enumerate() {
+        for (j, metaball) in &mut scene.metaballs.iter_mut().enumerate() {
             let phase = j as f32;
             let beta = alpha + phase * phase;
             metaball.sphere.center.x = (13.0 * beta).cos() * 1.0;
             metaball.sphere.center.y = (5.0 * beta).sin() * 1.0;
             metaball.sphere.center.z = (2.0 * beta).sin() * 1.0;
         }
-        render(&mut buffer, &camera, &metaballs, &environment);
+        render(&scene, &camera, &mut buffer);
         std::io::stdout().write_all(&buffer.pixels)?;
     }
     
