@@ -210,13 +210,13 @@ struct Scene<'a> {
     environment: &'a dyn EnvironmentMap,
 }
 
-fn trace(metaballs: &Vec<Metaball>, environment: &dyn EnvironmentMap, ray: &Ray<f32>) -> Color {
-    if let Some(out) = metaballs.trace(ray) {
+fn trace(scene: &Scene, ray: &Ray<f32>) -> Color {
+    if let Some(out) = scene.metaballs.trace(ray) {
         let reflected = reflect(&ray.direction, &out.direction);
-        environment.color(&reflected)
+        scene.environment.color(&reflected)
     } else {
         // background
-        environment.color(&ray.direction)
+        scene.environment.color(&ray.direction)
     }
 }
 
@@ -244,7 +244,7 @@ fn render(scene: &Scene, camera: &Camera, target: &mut Buffer) {
                 direction: camera.pose.rotation.inverse_transform_vector(&camera.ray_direction(&screen)),
             };
 
-            let color = trace(&scene.metaballs, scene.environment, &ray);
+            let color = trace(scene, &ray);
             pixel(target, x, y, &color);
         }
     }
