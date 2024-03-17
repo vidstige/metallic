@@ -171,10 +171,6 @@ fn checker(x: f32, y: f32, resolution: Resolution) -> Color {
     }
 }
 
-trait EnvironmentMap {
-    fn color(&self, direction: &Vector3<f32>) -> Color;
-}
-
 struct Light {
     direction: Vector3<f32>,
 }
@@ -185,11 +181,11 @@ impl Light {
     }
 }
 
-struct GradientEnvironment {
+struct EnvironmentMap {
     gradient: Gradient,
 }
 
-impl EnvironmentMap for GradientEnvironment {
+impl EnvironmentMap {
     fn color(&self, direction: &Vector3<f32>) -> Color {
         let s = spherical(direction);
         let (theta, phi) = (s.y, s.z);
@@ -204,10 +200,10 @@ impl EnvironmentMap for GradientEnvironment {
     }
 }
 
-struct Scene<'a> {
+struct Scene {
     metaballs: Vec<Metaball>,
     lights: Vec<Light>,
-    environment: &'a dyn EnvironmentMap,
+    environment: EnvironmentMap,
 }
 
 fn trace(scene: &Scene, ray: &Ray<f32>) -> Color {
@@ -282,7 +278,7 @@ fn main() -> io::Result<()>{
     let mut scene = Scene {
         metaballs: metaballs,
         lights: two_point_rig(),
-        environment: &GradientEnvironment {
+        environment: EnvironmentMap {
             gradient: metallic(),
         },
     };
