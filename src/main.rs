@@ -215,7 +215,7 @@ fn trace(scene: &Scene, ray: &Ray<f32>) -> Color {
         // reflect ray
         let reflected = reflect(&ray.direction, &out.direction);
         let white = 0xffffffff_u32.to_le_bytes();
-        let mut colors: Vec<_> = scene.lights.iter().map(|light| (white, light.intensity(&ray.direction))).collect();
+        let mut colors: Vec<_> = scene.lights.iter().map(|light| (white, 0.1  *light.intensity(&ray.direction))).collect();
         colors.push((scene.environment.color(&reflected), 1.0));
         mix_colors(&colors)
     } else {
@@ -277,7 +277,7 @@ fn main() -> io::Result<()>{
     let mut buffer = Buffer::new(resolution);
     let mut metaballs = Vec::new();
     for _ in 0..5 {
-        metaballs.push(Metaball::new(Point3::origin(), 3.0, 0.5));
+        metaballs.push(Metaball::new(Point3::origin(), 3.0, 0.50));
     }
     let mut scene = Scene {
         metaballs: metaballs,
@@ -298,12 +298,13 @@ fn main() -> io::Result<()>{
     let n = 260;
     for i in 0..n {
         let alpha = TAU * (i as f32) / (n as f32);
+        let count = scene.metaballs.len() as f32;
         for (j, metaball) in &mut scene.metaballs.iter_mut().enumerate() {
-            let phase = j as f32;
-            let beta = alpha + phase * phase;
-            metaball.sphere.center.x = (13.0 * beta).cos() * 1.0;
-            metaball.sphere.center.y = (5.0 * beta).sin() * 1.0;
-            metaball.sphere.center.z = (2.0 * beta).sin() * 1.0;
+            let phase = (j as f32) / count;
+            let beta = alpha + phase.sin() * TAU;
+            metaball.sphere.center.x = (13.0 * beta).cos() * 1.3;
+            metaball.sphere.center.y = (5.0 * beta).sin() * 1.3;
+            metaball.sphere.center.z = (2.0 * beta).sin() * 1.3;
         }
         render(&scene, &camera, &mut buffer);
         std::io::stdout().write_all(&buffer.pixels)?;
