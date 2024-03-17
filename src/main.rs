@@ -35,6 +35,8 @@ fn g(t: f32) -> f32 {
     t * t * t * (t * (t * 6.0 - 15.0) + 10.0)
 }
 
+const WHITE: Color = 0xffffffff_u32.to_le_bytes();
+const BLACK: Color = 0xff000000_u32.to_le_bytes();
 
 #[derive(PartialEq, PartialOrd)]
 struct Metaball {
@@ -162,12 +164,10 @@ fn normal_at(metaballs: &[&Metaball], p: &Point3<f32>) -> Vector3<f32> {
 
 fn checker(x: f32, y: f32, resolution: Resolution) -> Color {
     let (w, h) = resolution;
-    let black = 0xff000000_u32.to_le_bytes();
-    let white = 0xffffffff_u32.to_le_bytes();
     if ((x * w as f32) as i32 + (y * h as f32) as i32) % 2 == 0{
-        white
+        WHITE
     } else {
-        black
+        BLACK
     }
 }
 
@@ -189,14 +189,15 @@ impl EnvironmentMap {
     fn color(&self, direction: &Vector3<f32>) -> Color {
         let s = spherical(direction);
         let (theta, phi) = (s.y, s.z);
-        let mut colors = Vec::new();
-        colors.push((self.gradient.sample(theta / TAU), 1.0));
-        colors.push((checker(phi / PI, theta / PI, (16, 16)), 0.2));
-        /*for light in self.lights.iter() {
-            colors.push((0xffffffff_u32.to_le_bytes(), light.color(direction)));
-        }*/
-        //let checker = ;
-        mix_colors(&colors)
+        //let mut colors = Vec::new();
+        //colors.push((self.gradient.sample(theta / TAU), 1.0));
+        //colors.push((checker(phi / PI, theta / PI, (16, 16)), 0.2));
+        //mix_colors(&colors)
+        if theta < 0.5 * TAU {
+            WHITE
+        } else {
+            BLACK
+        }
     }
 }
 
@@ -210,8 +211,7 @@ fn trace(scene: &Scene, ray: &Ray<f32>) -> Color {
     if let Some(out) = scene.metaballs.trace(ray) {
         // reflect ray
         let reflected = reflect(&ray.direction, &out.direction);
-        let white = 0xffffffff_u32.to_le_bytes();
-        let mut colors: Vec<_> = scene.lights.iter().map(|light| (white, 0.1  *light.intensity(&ray.direction))).collect();
+        let mut colors: Vec<_> = scene.lights.iter().map(|light| (WHITE, 0.1  *light.intensity(&ray.direction))).collect();
         colors.push((scene.environment.color(&reflected), 1.0));
         mix_colors(&colors)
     } else {
