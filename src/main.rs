@@ -1,4 +1,4 @@
-use std::{env, f32::consts::{PI, TAU}, io::{self, Write}};
+use std::{env, f32::consts::TAU, io::{self, Write}};
 extern crate nalgebra as na;
 use color::mix_colors;
 use na::{Isometry3, Point2, Point3, Scalar, Vector2, Vector3};
@@ -189,15 +189,11 @@ impl EnvironmentMap {
     fn color(&self, direction: &Vector3<f32>) -> Color {
         let s = spherical(direction);
         let (theta, phi) = (s.y, s.z);
-        //let mut colors = Vec::new();
-        //colors.push((self.gradient.sample(theta / TAU), 1.0));
-        //colors.push((checker(phi / PI, theta / PI, (16, 16)), 0.2));
-        //mix_colors(&colors)
-        if theta < 0.5 * TAU {
-            WHITE
-        } else {
-            BLACK
-        }
+        let mut colors = Vec::new();
+        colors.push((self.gradient.sample(theta / TAU), 1.0));
+        colors.push((checker(phi / (0.5 * TAU), theta / (0.5 * TAU), (16, 16)), 0.2));
+        mix_colors(&colors)
+        //if theta / TAU > 0.5 { WHITE } else { BLACK }
     }
 }
 
@@ -211,7 +207,7 @@ fn trace(scene: &Scene, ray: &Ray<f32>) -> Color {
     if let Some(out) = scene.metaballs.trace(ray) {
         // reflect ray
         let reflected = reflect(&ray.direction, &out.direction);
-        let mut colors: Vec<_> = scene.lights.iter().map(|light| (WHITE, 0.1  *light.intensity(&ray.direction))).collect();
+        let mut colors: Vec<_> = scene.lights.iter().map(|light| (WHITE, 0.0  *light.intensity(&ray.direction))).collect();
         colors.push((scene.environment.color(&reflected), 1.0));
         mix_colors(&colors)
     } else {
@@ -252,12 +248,12 @@ fn render(scene: &Scene, camera: &Camera, target: &mut Buffer) {
 
 fn metallic() -> Gradient {
     let mut gradient = Gradient::new();
-    gradient.add_stop(0xff772884);
-    gradient.add_stop(0xffDFC0FB);
-    gradient.add_stop(0xff842996);
-    gradient.add_stop(0xff671D77);
-    gradient.add_stop(0xff42104D);
-    gradient.add_stop(0xffD3B4E9);
+    gradient.add_stop(0xff772884, 0.0);
+    gradient.add_stop(0xffDFC0FB, 0.2);
+    gradient.add_stop(0xff842996, 0.4);
+    gradient.add_stop(0xff671D77, 0.6);
+    gradient.add_stop(0xff42104D, 0.8);
+    gradient.add_stop(0xffD3B4E9, 1.0);
     gradient
 }
 
