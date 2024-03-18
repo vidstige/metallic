@@ -208,6 +208,7 @@ fn trace(scene: &Scene, ray: &Ray<f32>) -> Color {
         // reflect ray
         let reflected = reflect(&ray.direction, &out.direction);
         let mut colors: Vec<_> = scene.lights.iter().map(|light| (WHITE, 0.0  *light.intensity(&ray.direction))).collect();
+        colors.push((0xff842996_u32.to_le_bytes(), 1.0));  // add own color
         colors.push((scene.environment.color(&reflected), 1.0));
         mix_colors(&colors)
     } else {
