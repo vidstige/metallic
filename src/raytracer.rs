@@ -5,6 +5,7 @@ use na::{Point3, Scalar, Vector3};
 use crate::color::Color;
 use crate::color::mix_colors;
 use crate::gradient::Gradient;
+use crate::linesearch::linesearch;
 use crate::meatballs::{field_value, normal_at, Metaball};
 use crate::sphere::{spherical, Sphere};
 
@@ -48,27 +49,17 @@ impl Traceable<f32> for Vec<Metaball> {
             } else {
                 active.retain_mut(|mb| mb != &metaball);
             }
-            // trace between t0 and t1
-            let n = 5;
             let level = 0.3;
-            for i in 0..n {
-                let ti = crate::lerp::lerp(t0, t1, i as f32 / n as f32);
+            if let Some((tj, ti)) = linesearch(|t| field_value(&active, &ray.at(t)) - level, t0, t1, 5) {
+                let qj = field_value(&active, &ray.at(tj));
                 let qi = field_value(&active, &ray.at(ti));
-                if qi > level {
-                    // i-1 was positive
-                    let tj = crate::lerp::lerp(t0, t1, (i - 1) as f32 / n as f32);
-                    // TODO: avoid recomputing qj
-                    let qj = field_value(&active, &ray.at(tj));
-                    // lerp ray parameter t
-                    let t = crate::lerp::lerp(tj, ti, (level - qj) / (qi - qj));
-                    // compute normal
-                    let position = ray.at(t);
-                    let normal = normal_at(&active, &position);
-                    return Some(Ray {
-                        origin: position,
-                        direction: normal,
-                    });
-                }
+                let t = crate::lerp::lerp(tj, ti, (level - qj) / (qi - qj));
+                let position = ray.at(t);
+                let normal = normal_at(&active, &position);
+                return Some(Ray {
+                    origin: position,
+                    direction: normal,
+                });
             }
         }
         None

@@ -4,6 +4,7 @@ use na::{Isometry3, Point2, Point3, Vector2, Vector3};
 mod color;
 mod gradient;
 mod lerp;
+mod linesearch;
 mod meatballs;
 mod raytracer;
 mod resolution;
