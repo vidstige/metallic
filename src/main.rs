@@ -8,10 +8,11 @@ mod lerp;
 mod meatballs;
 mod raytracer;
 mod resolution;
+mod sdf;
 mod sphere;
 use gradient::Gradient;
 use meatballs::{Meatballs, Metaball};
-use raytracer::{trace, EnvironmentMap, Light, Ray, Scene};
+use raytracer::{trace, EnvironmentMap, Light, Ray, Scene, Tracer};
 use resolution::{area, parse_resolution, Resolution};
 use crate::color::Color;
 
@@ -63,7 +64,7 @@ impl Camera {
     }
 }
 
-fn render(scene: &Scene, camera: &Camera, target: &mut Buffer) {
+fn render(scene: &Scene, surface: &Meatballs, camera: &Camera, target: &mut Buffer) {
     let (width, height) = target.resolution;
     for y in 0..height {
         for x in 0..width {
@@ -76,7 +77,7 @@ fn render(scene: &Scene, camera: &Camera, target: &mut Buffer) {
                     .inverse_transform_vector(&camera.ray_direction(&screen)),
             };
 
-            let color = trace(scene, &ray);
+            let color = trace(scene, surface, &ray);
             pixel(target, x, y, &color);
         }
     }
@@ -124,13 +125,18 @@ fn main() -> io::Result<()> {
     for _ in 0..5 {
         metaballs.push(Metaball::new(Point3::origin(), 3.0, 0.50));
     }
-    let mut scene = Scene {
-        metaballs: Meatballs::new(metaballs, 0.3),
+    let scene = Scene {
+        tracer: Tracer {
+            near: 0.0,
+            far: 20.0,
+            steps: 64,
+        },
         lights: two_point_rig(),
         environment: EnvironmentMap {
             gradient: metallic(),
         },
     };
+    let mut surface = Meatballs::new(metaballs, 0.3);
     let camera = Camera {
         resolution,
         pose: Isometry3::look_at_lh(
@@ -143,15 +149,15 @@ fn main() -> io::Result<()> {
     let n = 260;
     for i in 0..n {
         let alpha = TAU * (i as f32) / (n as f32);
-        let count = scene.metaballs.metaballs.len() as f32;
-        for (j, metaball) in &mut scene.metaballs.metaballs.iter_mut().enumerate() {
+        let count = surface.metaballs.len() as f32;
+        for (j, metaball) in &mut surface.metaballs.iter_mut().enumerate() {
             let phase = (j as f32) / count;
             let beta = alpha + phase.sin() * TAU;
             metaball.sphere.center.x = (13.0 * beta).cos() * 1.3;
             metaball.sphere.center.y = (5.0 * beta).sin() * 1.3;
             metaball.sphere.center.z = (2.0 * beta).sin() * 1.3;
         }
-        render(&scene, &camera, &mut buffer);
+        render(&scene, &surface, &camera, &mut buffer);
         std::io::stdout().write_all(&buffer.pixels)?;
     }
     Ok(())

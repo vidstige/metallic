@@ -6,8 +6,8 @@ use crate::color::Color;
 use crate::color::mix_colors;
 use crate::eq::linesearch;
 use crate::gradient::Gradient;
-use crate::meatballs::{field_value, normal_at, Meatballs};
-use crate::sphere::{spherical, Sphere};
+use crate::sdf::SDF;
+use crate::sphere::spherical;
 
 pub struct Ray<T: Scalar> {
     pub origin: Point3<T>,
@@ -20,46 +20,24 @@ impl Ray<f32> {
     }
 }
 
-pub trait Traceable<T: Scalar> {
-    fn trace(&self, ray: &Ray<T>) -> Option<Ray<T>>;
+pub struct Tracer {
+    pub near: f32,
+    pub far: f32,
+    pub steps: usize,
 }
 
-impl Traceable<f32> for Meatballs {
-    fn trace(&self, ray: &Ray<f32>) -> Option<Ray<f32>> {
-        // find all intersections with sphere of influence
-        // also keep track of the ray enters (true) or leavs the sphere
-        let mut intersections: Vec<_> = Vec::new();
-        for metaball in &self.metaballs {
-            if let Some((t0, t1)) = sphere_ray_intersections(&ray, &metaball.sphere) {
-                intersections.push((t0, metaball, true));
-                intersections.push((t1, metaball, false));
-            }
-        }
-
-        // sort intersections by ray parameter t
-        intersections.sort_unstable_by(|(a, _, _), (b, _, _)| a.partial_cmp(b).unwrap());
-
-        // keep track of "active" spheres
-        let mut active = Vec::new();
-        for slice in intersections.windows(2) {
-            let (t0, metaball, enter) = slice[0];
-            let (t1, _, _) = slice[1];
-            if enter {
-                active.push(metaball);
-            } else {
-                active.retain_mut(|mb| mb != &metaball);
-            }
-            if let Some((tj, ti)) = linesearch(|t| field_value(&active, &ray.at(t)) - self.level, t0, t1, 5) {
-                let qj = field_value(&active, &ray.at(tj));
-                let qi = field_value(&active, &ray.at(ti));
-                let t = crate::lerp::lerp(tj, ti, (self.level - qj) / (qi - qj));
-                let position = ray.at(t);
-                let normal = normal_at(&active, &position);
-                return Some(Ray {
-                    origin: position,
-                    direction: normal,
-                });
-            }
+impl Tracer {
+    pub fn trace<S: SDF>(&self, ray: &Ray<f32>, surface: &S) -> Option<Ray<f32>> {
+        if let Some((t0, t1)) = linesearch(|t| surface.sdf(&ray.at(t)), self.near, self.far, self.steps) {
+            let q0 = surface.sdf(&ray.at(t0));
+            let q1 = surface.sdf(&ray.at(t1));
+            let t = crate::lerp::lerp(t0, t1, -q0 / (q1 - q0));
+            let position = ray.at(t);
+            let normal = surface.normal_at(&position);
+            return Some(Ray {
+                origin: position,
+                direction: normal,
+            });
         }
         None
     }
@@ -92,13 +70,13 @@ impl EnvironmentMap {
 }
 
 pub struct Scene {
-    pub metaballs: Meatballs,
+    pub tracer: Tracer,
     pub lights: Vec<Light>,
     pub environment: EnvironmentMap,
 }
 
-pub fn trace(scene: &Scene, ray: &Ray<f32>) -> Color {
-    if let Some(out) = scene.metaballs.trace(ray) {
+pub fn trace<S: SDF>(scene: &Scene, surface: &S, ray: &Ray<f32>) -> Color {
+    if let Some(out) = scene.tracer.trace(ray, surface) {
         // reflect ray
         let reflected = reflect(&ray.direction, &out.direction);
         let mut colors: Vec<_> = scene
@@ -117,17 +95,4 @@ pub fn trace(scene: &Scene, ray: &Ray<f32>) -> Color {
 
 fn reflect(v: &Vector3<f32>, normal: &Vector3<f32>) -> Vector3<f32> {
     v - 2.0 * (v.dot(normal)) * normal
-}
-
-fn sphere_ray_intersections(ray: &Ray<f32>, sphere: &Sphere<f32>) -> Option<(f32, f32)> {
-    let v = sphere.center - ray.origin;
-    let tca = v.dot(&ray.direction);
-    //if tca < 0.0 { return None; }
-    let d2 = v.dot(&v) - tca * tca;
-    let r2 = sphere.radius * sphere.radius;
-    if d2 > r2 {
-        return None;
-    }
-    let thc = (r2 - d2).sqrt();
-    Some((tca - thc, tca + thc))
 }

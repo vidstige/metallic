@@ -1,5 +1,6 @@
 use na::{Point3, Vector3};
 
+use crate::sdf::SDF;
 use crate::sphere::Sphere;
 
 #[derive(PartialEq, PartialOrd)]
@@ -16,6 +17,13 @@ pub struct Meatballs {
 impl Meatballs {
     pub fn new(metaballs: Vec<Metaball>, level: f32) -> Meatballs {
         Meatballs { metaballs, level }
+    }
+    pub fn field_value(&self, p: &Point3<f32>) -> f32 {
+        self.metaballs.iter().map(|mb| mb.field_value(p)).sum()
+    }
+    pub fn normal_at(&self, p: &Point3<f32>) -> Vector3<f32> {
+        let active: Vec<_> = self.metaballs.iter().collect();
+        normal_at(&active, p)
     }
 }
 
@@ -41,10 +49,6 @@ impl Metaball {
     }
 }
 
-pub(crate) fn field_value(metaballs: &[&Metaball], p: &Point3<f32>) -> f32 {
-    metaballs.iter().map(|mb| mb.field_value(p)).sum()
-}
-
 pub(crate) fn normal_at(metaballs: &[&Metaball], p: &Point3<f32>) -> Vector3<f32> {
     let qs: Vec<_> = metaballs.iter().map(|mb| mb.field_value(p)).collect();
     let q: f32 = qs.iter().sum();
@@ -61,4 +65,14 @@ pub(crate) fn normal_at(metaballs: &[&Metaball], p: &Point3<f32>) -> Vector3<f32
 // g'(0) = 0 and g'(1)
 fn g(t: f32) -> f32 {
     t * t * t * (t * (t * 6.0 - 15.0) + 10.0)
+}
+
+impl SDF for Meatballs {
+    fn sdf(&self, p: &Point3<f32>) -> f32 {
+        self.field_value(p) - self.level
+    }
+
+    fn normal_at(&self, p: &Point3<f32>) -> Vector3<f32> {
+        Meatballs::normal_at(self, p)
+    }
 }
