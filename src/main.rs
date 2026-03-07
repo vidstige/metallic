@@ -8,10 +8,12 @@ use color::mix_colors;
 use na::{Isometry3, Point2, Point3, Scalar, Vector2, Vector3};
 mod color;
 mod gradient;
+mod lerp;
 mod resolution;
 mod sphere;
 use crate::color::Color;
 use gradient::Gradient;
+use lerp::lerp;
 use resolution::{area, parse_resolution, Resolution};
 use sphere::{spherical, Sphere};
 
@@ -155,10 +157,6 @@ fn sphere_ray_intersections(ray: &Ray<f32>, sphere: &Sphere<f32>) -> Option<(f32
     }
     let thc = (r2 - d2).sqrt();
     Some((tca - thc, tca + thc))
-}
-
-fn lerp(a: f32, b: f32, t: f32) -> f32 {
-    (1.0 - t) * a + t * b
 }
 
 fn field_value(metaballs: &[&Metaball], p: &Point3<f32>) -> f32 {
