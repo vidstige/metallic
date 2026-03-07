@@ -1,4 +1,8 @@
-use std::{env, f32::consts::TAU, io::{self, Write}};
+use std::{
+    env,
+    f32::consts::TAU,
+    io::{self, Write},
+};
 extern crate nalgebra as na;
 use na::{Isometry3, Point2, Point3, Vector2, Vector3};
 mod color;
@@ -9,12 +13,14 @@ mod meatballs;
 mod raytracer;
 mod resolution;
 mod sdf;
+mod simplex;
 mod sphere;
+use crate::color::Color;
+use crate::simplex::SimplexNoise;
 use gradient::Gradient;
 use meatballs::{Meatballs, Metaball};
 use raytracer::{trace, EnvironmentMap, Light, Ray, Scene, Tracer};
 use resolution::{area, parse_resolution, Resolution};
-use crate::color::Color;
 
 struct Buffer {
     resolution: Resolution,
@@ -134,6 +140,10 @@ fn main() -> io::Result<()> {
         lights: two_point_rig(),
         environment: EnvironmentMap {
             gradient: metallic(),
+            simplex: SimplexNoise {
+                scale: 16.0,
+                strength: 0.5,
+            },
         },
     };
     let mut surface = Meatballs::new(metaballs, 0.3);
@@ -146,9 +156,9 @@ fn main() -> io::Result<()> {
         ),
         fov: 90.0_f32.to_radians(),
     };
-    let n = 260;
+    let n = 1024;
     for i in 0..n {
-        let alpha = TAU * (i as f32) / (n as f32);
+        let alpha = TAU * (i as f32) / (256 as f32);
         let count = surface.metaballs.len() as f32;
         for (j, metaball) in &mut surface.metaballs.iter_mut().enumerate() {
             let phase = (j as f32) / count;
