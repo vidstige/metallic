@@ -1,15 +1,19 @@
-use std::{env, f32::consts::TAU, io::{self, Write}};
+use std::{
+    env,
+    f32::consts::TAU,
+    io::{self, Write},
+};
 extern crate nalgebra as na;
 use color::mix_colors;
 use na::{Isometry3, Point2, Point3, Scalar, Vector2, Vector3};
-mod gradient;
-mod sphere;
 mod color;
+mod gradient;
 mod resolution;
-use sphere::{Sphere, spherical};
-use gradient::Gradient;
-use resolution::{Resolution, parse_resolution, area};
+mod sphere;
 use crate::color::Color;
+use gradient::Gradient;
+use resolution::{area, parse_resolution, Resolution};
+use sphere::{spherical, Sphere};
 
 struct Buffer {
     resolution: Resolution,
@@ -18,7 +22,10 @@ struct Buffer {
 
 impl Buffer {
     fn new(resolution: Resolution) -> Buffer {
-        Buffer { resolution, pixels: vec![0; area(resolution) * 4]}
+        Buffer {
+            resolution,
+            pixels: vec![0; area(resolution) * 4],
+        }
     }
 }
 
@@ -122,7 +129,10 @@ impl Traceable<f32> for Vec<Metaball> {
                     // compute normal
                     let position = ray.at(t);
                     let normal = normal_at(&active, &position);
-                    return Some(Ray{origin: position, direction: normal});
+                    return Some(Ray {
+                        origin: position,
+                        direction: normal,
+                    });
                 }
             }
         }
@@ -158,13 +168,17 @@ fn field_value(metaballs: &[&Metaball], p: &Point3<f32>) -> f32 {
 fn normal_at(metaballs: &[&Metaball], p: &Point3<f32>) -> Vector3<f32> {
     let qs: Vec<_> = metaballs.iter().map(|mb| mb.field_value(p)).collect();
     let q: f32 = qs.iter().sum();
-    let normal: Vector3<f32> = metaballs.iter().zip(qs).map(|(mb, qi)| qi * mb.normal(p)).sum();
+    let normal: Vector3<f32> = metaballs
+        .iter()
+        .zip(qs)
+        .map(|(mb, qi)| qi * mb.normal(p))
+        .sum();
     normal / q
 }
 
 fn checker(x: f32, y: f32, resolution: Resolution) -> Color {
     let (w, h) = resolution;
-    if ((x * w as f32) as i32 + (y * h as f32) as i32) % 2 == 0{
+    if ((x * w as f32) as i32 + (y * h as f32) as i32) % 2 == 0 {
         WHITE
     } else {
         BLACK
@@ -207,8 +221,12 @@ fn trace(scene: &Scene, ray: &Ray<f32>) -> Color {
     if let Some(out) = scene.metaballs.trace(ray) {
         // reflect ray
         let reflected = reflect(&ray.direction, &out.direction);
-        let mut colors: Vec<_> = scene.lights.iter().map(|light| (WHITE, 0.0  *light.intensity(&ray.direction))).collect();
-        colors.push((0xff842996_u32.to_le_bytes(), 1.0));  // add own color
+        let mut colors: Vec<_> = scene
+            .lights
+            .iter()
+            .map(|light| (WHITE, 0.0 * light.intensity(&ray.direction)))
+            .collect();
+        colors.push((0xff842996_u32.to_le_bytes(), 1.0)); // add own color
         colors.push((scene.environment.color(&reflected), 1.0));
         mix_colors(&colors)
     } else {
@@ -227,7 +245,9 @@ impl Camera {
     fn ray_direction(&self, screen: &Point2<f32>) -> Vector3<f32> {
         let (width, height) = self.resolution;
         let center = 0.5 * Vector2::new(width as f32, height as f32);
-        ((screen - center) / center.min() * (0.5 * self.fov).tan()).to_homogeneous().normalize()
+        ((screen - center) / center.min() * (0.5 * self.fov).tan())
+            .to_homogeneous()
+            .normalize()
     }
 }
 
@@ -236,9 +256,12 @@ fn render(scene: &Scene, camera: &Camera, target: &mut Buffer) {
     for y in 0..height {
         for x in 0..width {
             let screen = Point2::new(x as f32, y as f32);
-            let ray = Ray{
+            let ray = Ray {
                 origin: camera.pose.inverse_transform_point(&Point3::origin()),
-                direction: camera.pose.rotation.inverse_transform_vector(&camera.ray_direction(&screen)),
+                direction: camera
+                    .pose
+                    .rotation
+                    .inverse_transform_vector(&camera.ray_direction(&screen)),
             };
 
             let color = trace(scene, &ray);
@@ -255,14 +278,18 @@ fn metallic() -> Gradient {
     gradient.add_stop(0xff575955, 0.3);
     gradient.add_stop(0xff989691, 0.4);
     gradient.add_stop(0xff989691, 1.0);
-    
+
     gradient
 }
 
 fn two_point_rig() -> Vec<Light> {
     vec![
-        Light{direction: Vector3::new(1.0, 1.0, 1.0)},
-        Light{direction: Vector3::new(-1.0, 1.0, 1.0)},
+        Light {
+            direction: Vector3::new(1.0, 1.0, 1.0),
+        },
+        Light {
+            direction: Vector3::new(-1.0, 1.0, 1.0),
+        },
     ]
 }
 
@@ -276,7 +303,7 @@ fn fill(buffer: &mut Buffer, gradient: &Gradient) {
     }
 }
 
-fn main() -> io::Result<()>{
+fn main() -> io::Result<()> {
     let resolution = parse_resolution(&env::var("RESOLUTION").unwrap_or("506x253".to_string()));
     let mut buffer = Buffer::new(resolution);
     /*fill(&mut buffer, &metallic());
@@ -317,4 +344,3 @@ fn main() -> io::Result<()>{
     }
     Ok(())
 }
-

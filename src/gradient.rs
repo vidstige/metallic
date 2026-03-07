@@ -5,7 +5,7 @@ pub struct Gradient {
 }
 
 impl Gradient {
-    pub fn new() -> Gradient{
+    pub fn new() -> Gradient {
         Gradient { stops: Vec::new() }
     }
     pub fn add_stop(&mut self, color: u32, t: f32) {
