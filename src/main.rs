@@ -9,11 +9,13 @@ use na::{Isometry3, Point2, Point3, Scalar, Vector2, Vector3};
 mod color;
 mod gradient;
 mod lerp;
+mod meatballs;
 mod resolution;
 mod sphere;
 use crate::color::Color;
 use gradient::Gradient;
 use lerp::lerp;
+use meatballs::{field_value, normal_at, Metaball};
 use resolution::{area, parse_resolution, Resolution};
 use sphere::{spherical, Sphere};
 
@@ -37,43 +39,8 @@ fn pixel(target: &mut Buffer, x: i32, y: i32, color: &Color) {
     target.pixels[index..index + color.len()].copy_from_slice(color);
 }
 
-// the special tween function
-// g(0) = 0 and g(1) = 1 as well as
-// g'(0) = 0 and g'(1)
-fn g(t: f32) -> f32 {
-    t * t * t * (t * (t * 6.0 - 15.0) + 10.0)
-}
-
 const WHITE: Color = 0xffffffff_u32.to_le_bytes();
 const BLACK: Color = 0xff000000_u32.to_le_bytes();
-
-#[derive(PartialEq, PartialOrd)]
-struct Metaball {
-    sphere: Sphere<f32>,
-    strength: f32,
-}
-
-impl Metaball {
-    fn new(position: Point3<f32>, radius: f32, strength: f32) -> Metaball {
-        Metaball {
-            sphere: Sphere::new(position, radius),
-            strength,
-        }
-    }
-    fn field_value(&self, p: &Point3<f32>) -> f32 {
-        let d2 = (self.sphere.center - p).magnitude_squared();
-        let r2 = self.sphere.radius_squared();
-        if d2 > r2 {
-            return 0.0;
-        }
-        let t = 1.0 - (d2 / r2).sqrt();
-        self.strength * g(t)
-    }
-    fn normal(&self, p: &Point3<f32>) -> Vector3<f32> {
-        // The normal is simply the normalized vector from center to the point o
-        (p - self.sphere.center).normalize()
-    }
-}
 
 struct Ray<T: Scalar> {
     origin: Point3<T>,
@@ -157,21 +124,6 @@ fn sphere_ray_intersections(ray: &Ray<f32>, sphere: &Sphere<f32>) -> Option<(f32
     }
     let thc = (r2 - d2).sqrt();
     Some((tca - thc, tca + thc))
-}
-
-fn field_value(metaballs: &[&Metaball], p: &Point3<f32>) -> f32 {
-    metaballs.iter().map(|mb| mb.field_value(p)).sum()
-}
-
-fn normal_at(metaballs: &[&Metaball], p: &Point3<f32>) -> Vector3<f32> {
-    let qs: Vec<_> = metaballs.iter().map(|mb| mb.field_value(p)).collect();
-    let q: f32 = qs.iter().sum();
-    let normal: Vector3<f32> = metaballs
-        .iter()
-        .zip(qs)
-        .map(|(mb, qi)| qi * mb.normal(p))
-        .sum();
-    normal / q
 }
 
 fn checker(x: f32, y: f32, resolution: Resolution) -> Color {
