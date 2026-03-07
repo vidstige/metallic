@@ -127,9 +127,9 @@ fn main() -> io::Result<()> {
     }
     let scene = Scene {
         tracer: Tracer {
-            near: 0.0,
-            far: 20.0,
-            steps: 64,
+            near: 2.0,
+            far: 8.0,
+            steps: 16,
         },
         lights: two_point_rig(),
         environment: EnvironmentMap {
