@@ -6,7 +6,7 @@ use crate::color::Color;
 use crate::color::mix_colors;
 use crate::eq::linesearch;
 use crate::gradient::Gradient;
-use crate::meatballs::{field_value, normal_at, Metaball};
+use crate::meatballs::{field_value, normal_at, Meatballs};
 use crate::sphere::{spherical, Sphere};
 
 pub struct Ray<T: Scalar> {
@@ -24,12 +24,12 @@ pub trait Traceable<T: Scalar> {
     fn trace(&self, ray: &Ray<T>) -> Option<Ray<T>>;
 }
 
-impl Traceable<f32> for Vec<Metaball> {
+impl Traceable<f32> for Meatballs {
     fn trace(&self, ray: &Ray<f32>) -> Option<Ray<f32>> {
         // find all intersections with sphere of influence
         // also keep track of the ray enters (true) or leavs the sphere
         let mut intersections: Vec<_> = Vec::new();
-        for metaball in self {
+        for metaball in &self.metaballs {
             if let Some((t0, t1)) = sphere_ray_intersections(&ray, &metaball.sphere) {
                 intersections.push((t0, metaball, true));
                 intersections.push((t1, metaball, false));
@@ -49,11 +49,10 @@ impl Traceable<f32> for Vec<Metaball> {
             } else {
                 active.retain_mut(|mb| mb != &metaball);
             }
-            let level = 0.3;
-            if let Some((tj, ti)) = linesearch(|t| field_value(&active, &ray.at(t)) - level, t0, t1, 5) {
+            if let Some((tj, ti)) = linesearch(|t| field_value(&active, &ray.at(t)) - self.level, t0, t1, 5) {
                 let qj = field_value(&active, &ray.at(tj));
                 let qi = field_value(&active, &ray.at(ti));
-                let t = crate::lerp::lerp(tj, ti, (level - qj) / (qi - qj));
+                let t = crate::lerp::lerp(tj, ti, (self.level - qj) / (qi - qj));
                 let position = ray.at(t);
                 let normal = normal_at(&active, &position);
                 return Some(Ray {
@@ -93,7 +92,7 @@ impl EnvironmentMap {
 }
 
 pub struct Scene {
-    pub metaballs: Vec<Metaball>,
+    pub metaballs: Meatballs,
     pub lights: Vec<Light>,
     pub environment: EnvironmentMap,
 }

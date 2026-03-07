@@ -8,6 +8,17 @@ pub struct Metaball {
     strength: f32,
 }
 
+pub struct Meatballs {
+    pub metaballs: Vec<Metaball>,
+    pub level: f32,
+}
+
+impl Meatballs {
+    pub fn new(metaballs: Vec<Metaball>, level: f32) -> Meatballs {
+        Meatballs { metaballs, level }
+    }
+}
+
 impl Metaball {
     pub fn new(position: Point3<f32>, radius: f32, strength: f32) -> Metaball {
         Metaball {
@@ -30,11 +41,11 @@ impl Metaball {
     }
 }
 
-pub fn field_value(metaballs: &[&Metaball], p: &Point3<f32>) -> f32 {
+pub(crate) fn field_value(metaballs: &[&Metaball], p: &Point3<f32>) -> f32 {
     metaballs.iter().map(|mb| mb.field_value(p)).sum()
 }
 
-pub fn normal_at(metaballs: &[&Metaball], p: &Point3<f32>) -> Vector3<f32> {
+pub(crate) fn normal_at(metaballs: &[&Metaball], p: &Point3<f32>) -> Vector3<f32> {
     let qs: Vec<_> = metaballs.iter().map(|mb| mb.field_value(p)).collect();
     let q: f32 = qs.iter().sum();
     let normal: Vector3<f32> = metaballs

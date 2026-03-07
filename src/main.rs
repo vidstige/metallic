@@ -10,7 +10,7 @@ mod raytracer;
 mod resolution;
 mod sphere;
 use gradient::Gradient;
-use meatballs::Metaball;
+use meatballs::{Meatballs, Metaball};
 use raytracer::{trace, EnvironmentMap, Light, Ray, Scene};
 use resolution::{area, parse_resolution, Resolution};
 use crate::color::Color;
@@ -125,7 +125,7 @@ fn main() -> io::Result<()> {
         metaballs.push(Metaball::new(Point3::origin(), 3.0, 0.50));
     }
     let mut scene = Scene {
-        metaballs: metaballs,
+        metaballs: Meatballs::new(metaballs, 0.3),
         lights: two_point_rig(),
         environment: EnvironmentMap {
             gradient: metallic(),
@@ -143,8 +143,8 @@ fn main() -> io::Result<()> {
     let n = 260;
     for i in 0..n {
         let alpha = TAU * (i as f32) / (n as f32);
-        let count = scene.metaballs.len() as f32;
-        for (j, metaball) in &mut scene.metaballs.iter_mut().enumerate() {
+        let count = scene.metaballs.metaballs.len() as f32;
+        for (j, metaball) in &mut scene.metaballs.metaballs.iter_mut().enumerate() {
             let phase = (j as f32) / count;
             let beta = alpha + phase.sin() * TAU;
             metaball.sphere.center.x = (13.0 * beta).cos() * 1.3;
