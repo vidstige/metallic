@@ -2,10 +2,6 @@ pub fn linesearch<F>(f: F, lo: f32, hi: f32, steps: usize) -> Option<(f32, f32)>
 where
     F: Fn(f32) -> f32,
 {
-    if steps == 0 {
-        return None;
-    }
-
     let mut previous_t = lo;
     let mut previous_q = f(lo);
 
