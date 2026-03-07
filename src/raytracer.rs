@@ -4,8 +4,8 @@ use na::{Point3, Scalar, Vector3};
 
 use crate::color::Color;
 use crate::color::mix_colors;
+use crate::eq::linesearch;
 use crate::gradient::Gradient;
-use crate::linesearch::linesearch;
 use crate::meatballs::{field_value, normal_at, Metaball};
 use crate::sphere::{spherical, Sphere};
 
