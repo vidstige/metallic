@@ -78,26 +78,25 @@ impl EnvironmentMap {
 }
 
 pub struct Scene {
-    pub tracer: Tracer,
     pub lights: Vec<Light>,
     pub environment: EnvironmentMap,
 }
 
-pub fn trace<S: SDF>(scene: &Scene, surface: &S, ray: &Ray<f32>) -> Color {
-    if let Some(out) = scene.tracer.trace(ray, surface) {
+pub fn trace<S: SDF>(scene: &Scene, tracer: &Tracer, surface: &S, ray: &Ray<f32>) -> Color {
+    if let Some(out) = tracer.trace(ray, surface) {
         // reflect ray
         let reflected = reflect(&ray.direction, &out.direction);
         let mut colors: Vec<_> = Vec::new();
         /*scene
-            .lights
-            .iter()
-            .map(|light| {
-                (
-                    0xffffffff_u32.to_le_bytes(),
-                    0.0 * light.intensity(&ray.direction),
-                )
-            })
-            .collect();*/
+        .lights
+        .iter()
+        .map(|light| {
+            (
+                0xffffffff_u32.to_le_bytes(),
+                0.0 * light.intensity(&ray.direction),
+            )
+        })
+        .collect();*/
         colors.push((0xff842996_u32.to_le_bytes(), 1.0)); // add own color
         colors.push((scene.environment.color(&reflected), 1.0));
         mix_colors(&colors)

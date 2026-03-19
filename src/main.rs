@@ -70,7 +70,13 @@ impl Camera {
     }
 }
 
-fn render(scene: &Scene, surface: &Meatballs, camera: &Camera, target: &mut Buffer) {
+fn render(
+    scene: &Scene,
+    tracer: &Tracer,
+    surface: &Meatballs,
+    camera: &Camera,
+    target: &mut Buffer,
+) {
     let (width, height) = target.resolution;
     for y in 0..height {
         for x in 0..width {
@@ -83,7 +89,7 @@ fn render(scene: &Scene, surface: &Meatballs, camera: &Camera, target: &mut Buff
                     .inverse_transform_vector(&camera.ray_direction(&screen)),
             };
 
-            let color = trace(scene, surface, &ray);
+            let color = trace(scene, tracer, surface, &ray);
             pixel(target, x, y, &color);
         }
     }
@@ -132,11 +138,6 @@ fn main() -> io::Result<()> {
         metaballs.push(Metaball::new(Point3::origin(), 3.0, 0.50));
     }
     let scene = Scene {
-        tracer: Tracer {
-            near: 2.0,
-            far: 8.0,
-            steps: 16,
-        },
         lights: two_point_rig(),
         environment: EnvironmentMap {
             gradient: metallic(),
@@ -145,6 +146,11 @@ fn main() -> io::Result<()> {
                 strength: 0.5,
             },
         },
+    };
+    let tracer = Tracer {
+        near: 2.0,
+        far: 8.0,
+        steps: 16,
     };
     let mut surface = Meatballs::new(metaballs, 0.3);
     let camera = Camera {
@@ -167,7 +173,7 @@ fn main() -> io::Result<()> {
             metaball.sphere.center.y = (5.0 * beta).sin() * 1.3;
             metaball.sphere.center.z = (2.0 * beta).sin() * 1.3;
         }
-        render(&scene, &surface, &camera, &mut buffer);
+        render(&scene, &tracer, &surface, &camera, &mut buffer);
         std::io::stdout().write_all(&buffer.pixels)?;
     }
     Ok(())
