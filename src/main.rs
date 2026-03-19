@@ -162,9 +162,12 @@ fn main() -> io::Result<()> {
         ),
         fov: 90.0_f32.to_radians(),
     };
+    let fps = 30.0;
+    let omega = fps * TAU / 256.0;
     let n = 1024;
     for i in 0..n {
-        let alpha = TAU * (i as f32) / (256 as f32);
+        let time = i as f32 / fps;
+        let alpha = omega * time;
         let count = surface.metaballs.len() as f32;
         for (j, metaball) in &mut surface.metaballs.iter_mut().enumerate() {
             let phase = (j as f32) / count;
