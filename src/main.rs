@@ -142,7 +142,7 @@ fn main() -> io::Result<()> {
         environment: EnvironmentMap {
             gradient: metallic(),
             simplex: SimplexNoise {
-                scale: 16.0,
+                scale: 4.0,
                 strength: 0.5,
             },
         },
